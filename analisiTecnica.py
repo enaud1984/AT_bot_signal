@@ -4,8 +4,6 @@ import pandas as pd
 import ccxt
 import matplotlib.pyplot as plt
 import time
-'''import psutil'''
-import os
 from param import *
 
 saldo_iniziale = 5000
