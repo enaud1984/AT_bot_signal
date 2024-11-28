@@ -23,6 +23,7 @@ signalperiod = 9
 timeperiod_RSI = 14
 
 time_sleep = 10
+symbol='BTC/USDT'
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
 exchange_hist = ccxt.kucoin({
@@ -36,6 +37,41 @@ exchange_operation = ccxt.bitfinex({
     'secret': SECRET_KEY_bitfinex,
     'enableRateLimit': True,
 })
+
+def execute_trade_all(exchange, symbol, signal):
+    """
+    Esegue un ordine di acquisto o vendita basato sul segnale.
+    - Compra tutto il saldo disponibile in USDT.
+    - Vendi tutto il saldo disponibile in BTC.
+    """
+    try:
+        balance = exchange.fetch_balance()
+        ticker = exchange.fetch_ticker(symbol)
+        price = ticker['last']
+
+        if signal == 'BUY':
+            usdt_balance = balance['free']['USDT']
+            if usdt_balance > 0:
+                quantity = usdt_balance / price
+                print(f"Acquisto di {quantity:.6f} {symbol} a {price}")
+                order = exchange.create_market_buy_order(symbol, quantity)
+                print("Ordine di acquisto completato:", order)
+            else:
+                print("Saldo USDT insufficiente per acquistare.")
+
+        elif signal == 'SELL':
+            crypto=symbol.split('/')[0]
+            btc_balance = balance['free'][crypto]
+            if btc_balance > 0:
+                print(f"Vendita di {btc_balance:.6f} {crypto}")
+                order = exchange.create_market_sell_order(symbol, btc_balance)
+                print("Ordine di vendita completato:", order)
+            else:
+                print(f"Saldo {crypto} insufficiente per vendere.")
+
+    except Exception as e:
+        print(f"Errore durante l'esecuzione del trade: {e}")
+
 
 def generate_signals(df):
     signals = []
@@ -73,7 +109,7 @@ def generate_signals(df):
 
 while True:
     try:
-        bars = exchange_hist.fetch_ohlcv('BTC/USDT', timeframe='6h', limit=365*4)
+        bars = exchange_hist.fetch_ohlcv(symbol, timeframe='6h', limit=365*4)
         df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     except Exception as e:
         print("Errore nel recupero dei dati:", e)
@@ -125,6 +161,11 @@ while True:
         df_filtrato_sell=df_filtrato_sell.sort_values(by='timestamp', ascending=False)
         print(df_filtrato_buy)
         print(df_filtrato_sell)
+        if not df_filtrato_buy.empty:
+            execute_trade_all(exchange_operation, symbol, 'BUY')
+
+        if not df_filtrato_sell.empty:
+            execute_trade_all(exchange_operation, symbol, 'SELL')
 
         if False:
             # Visualizzazione grafica
@@ -135,7 +176,7 @@ while True:
             # Aggiunta dei segnali di acquisto e vendita
             plt.scatter(df_filtrato_buy['timestamp'], df_filtrato_buy['close'], marker='^', color='green', label='Segnale di Acquisto', alpha=1)
             plt.scatter(df_filtrato_sell['timestamp'], df_filtrato_sell['close'], marker='v', color='red', label='Segnale di Vendita', alpha=1)
-            plt.title('Strategia di Segnale di Acquisto e Vendita su BTC/USDT con Stop Loss e Take Profit')
+            plt.title(f'Strategia di Segnale di Acquisto e Vendita su {symbol} con Stop Loss e Take Profit')
             plt.xlabel('Data')
             plt.ylabel('Prezzo (USD)')
             plt.legend(loc='best')
