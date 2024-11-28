@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import time
 import psutil
 import os
+from param import *
 
 saldo_iniziale = 5000
 soglia_stop = 0.015
@@ -24,15 +25,17 @@ timeperiod_RSI = 14
 time_sleep = 10
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
-exchange = ccxt.kucoin({
-    'apiKey': 'YOUR_KUCOIN_API_KEY',
-    'secret': 'YOUR_KUCOIN_SECRET_KEY',
+exchange_hist = ccxt.kucoin({
+    'apiKey': '',
+    'secret': '',
     'enableRateLimit': True,
 })
-def get_memory_usage():
-    process = psutil.Process(os.getpid())  # Ottieni il processo corrente
-    memory_info = process.memory_info()  # Ottieni informazioni sulla memoria
-    return memory_info.rss  # Memoria residente (in bytes)
+
+exchange_operation = ccxt.bitfinex({
+    'apiKey': API_KEY_bitfinex,
+    'secret': SECRET_KEY_bitfinex,
+    'enableRateLimit': True,
+})
 
 def generate_signals(df):
     signals = []
@@ -69,9 +72,8 @@ def generate_signals(df):
     return df
 
 while True:
-    memory_before = get_memory_usage()
     try:
-        bars = exchange.fetch_ohlcv('BTC/USDT', timeframe='6h', limit=365*4)
+        bars = exchange_hist.fetch_ohlcv('BTC/USDT', timeframe='6h', limit=365*4)
         df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     except Exception as e:
         print("Errore nel recupero dei dati:", e)
@@ -139,6 +141,4 @@ while True:
             plt.legend(loc='best')
             plt.grid()
             plt.show()
-        memory_after = get_memory_usage()
-        print(f"Memory Used in this iteration: {(memory_after - memory_before) / (1024 ** 2):.2f} MB")
         time.sleep(time_sleep)
