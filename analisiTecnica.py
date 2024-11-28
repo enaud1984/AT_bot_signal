@@ -4,7 +4,7 @@ import pandas as pd
 import ccxt
 import matplotlib.pyplot as plt
 import time
-import psutil
+'''import psutil'''
 import os
 from param import *
 
@@ -22,7 +22,7 @@ slowperiod = 26
 signalperiod = 9
 timeperiod_RSI = 14
 
-time_sleep = 10
+time_sleep = 21600
 symbol='BTC/USDT'
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
