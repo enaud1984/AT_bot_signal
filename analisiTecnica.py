@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import time
 from param import *
 
+
+COMPRO_VENDO_FLAG=False
 saldo_iniziale = 5000
 soglia_stop = 0.015
 soglia_profit = 0.025
@@ -159,11 +161,12 @@ while True:
         df_filtrato_sell=df_filtrato_sell.sort_values(by='timestamp', ascending=False)
         print(df_filtrato_buy)
         print(df_filtrato_sell)
-        if not df_filtrato_buy.empty:
-            execute_trade_all(exchange_operation, symbol, 'BUY')
+        if COMPRO_VENDO_FLAG:
+            if not df_filtrato_buy.empty:
+                execute_trade_all(exchange_operation, symbol, 'BUY')
 
-        if not df_filtrato_sell.empty:
-            execute_trade_all(exchange_operation, symbol, 'SELL')
+            if not df_filtrato_sell.empty:
+                execute_trade_all(exchange_operation, symbol, 'SELL')
 
         if False:
             # Visualizzazione grafica
