@@ -1,3 +1,5 @@
+from traceback import print_tb
+
 import talib
 import numpy as np
 import pandas as pd
@@ -9,8 +11,6 @@ from param import *
 
 COMPRO_VENDO_FLAG=False
 saldo_iniziale = 5000
-soglia_stop = 0.015
-soglia_profit = 0.025
 
 hist_timeframe = '6h'
 hist_limit = 365*4
@@ -152,8 +152,7 @@ while True:
                 df2.iloc[i, df2.columns.get_loc('balance')] = df2.iloc[i - 1, df2.columns.get_loc('balance')]
         buy_signals = df[df['Signal'] == 'BUY']
         sell_signals = df[df['Signal'] == 'SELL']
-        oggi = pd.Timestamp.today()
-        ieri = oggi - pd.Timedelta(days=30)
+        oggi = pd.Timestamp.today() - pd.Timedelta(hours=1)
 
         df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
         df_filtrato_buy=df_filtrato_buy.sort_values(by='timestamp', ascending=False)
@@ -161,12 +160,13 @@ while True:
         df_filtrato_sell=df_filtrato_sell.sort_values(by='timestamp', ascending=False)
         print(df_filtrato_buy)
         print(df_filtrato_sell)
-        if COMPRO_VENDO_FLAG:
+        # print(df2)   -- stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
+        '''if COMPRO_VENDO_FLAG:
             if not df_filtrato_buy.empty:
                 execute_trade_all(exchange_operation, symbol, 'BUY')
 
             if not df_filtrato_sell.empty:
-                execute_trade_all(exchange_operation, symbol, 'SELL')
+                execute_trade_all(exchange_operation, symbol, 'SELL')'''
 
         if False:
             # Visualizzazione grafica
