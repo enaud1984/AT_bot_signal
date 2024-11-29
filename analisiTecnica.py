@@ -24,6 +24,7 @@ timeperiod_RSI = 14
 
 time_sleep = 21600
 symbol='BTC/USDT'
+symbol_to_sell = 'BTC'
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
 exchange_hist = ccxt.kucoin({
@@ -38,40 +39,69 @@ exchange_operation = ccxt.bitfinex({
     'enableRateLimit': True,
 })
 
-def execute_trade_all(exchange, symbol, signal):
-    """
-    Esegue un ordine di acquisto o vendita basato sul segnale.
-    - Compra tutto il saldo disponibile in USDT.
-    - Vendi tutto il saldo disponibile in BTC.
-    """
+# Funzione per acquistare
+def acquista(symbol):
     try:
-        balance = exchange.fetch_balance()
-        ticker = exchange.fetch_ticker(symbol)
-        price = ticker['last']
+        # Carica i mercati dell'exchange
+        exchange_operation.load_markets()
 
-        if signal == 'BUY':
-            usdt_balance = balance['free']['USDT']
-            if usdt_balance > 0:
-                quantity = usdt_balance / price
-                print(f"Acquisto di {quantity:.6f} {symbol} a {price}")
-                order = exchange.create_market_buy_order(symbol, quantity)
-                print("Ordine di acquisto completato:", order)
-            else:
-                print("Saldo USDT insufficiente per acquistare.")
+        # Ottieni il saldo corrente in USDT
+        balance = exchange_operation.fetch_balance()
+        usdt_balance = balance['total']['USDT']
 
-        elif signal == 'SELL':
-            crypto=symbol.split('/')[0]
-            btc_balance = balance['free'][crypto]
-            if btc_balance > 0:
-                print(f"Vendita di {btc_balance:.6f} {crypto}")
-                order = exchange.create_market_sell_order(symbol, btc_balance)
-                print("Ordine di vendita completato:", order)
-            else:
-                print(f"Saldo {crypto} insufficiente per vendere.")
+        # Calcola il 30% del saldo in USDT
+        amount_to_spend = usdt_balance
+
+        if amount_to_spend <= 0:
+            print("Saldo insufficiente in USDT per effettuare l'acquisto.")
+            return
+
+        # Ottieni il prezzo di mercato corrente per BXN/USDT
+        ticker = exchange_operation.fetch_ticker(symbol)
+        market_price = ticker['last']
+
+        print(f"Saldo USDT: {usdt_balance}, Importo da spendere: {amount_to_spend}, Prezzo di mercato: {market_price}, Importo BXN da acquistare: {amount_to_spend}")
+
+        # Esegui un ordine di acquisto al mercato
+        order = exchange_operation.create_market_buy_order(symbol, amount_to_spend)
+
+        print("Ordine di acquisto eseguito con successo:")
+        print(order)
 
     except Exception as e:
-        print(f"Errore durante l'esecuzione del trade: {e}")
+        print(f"Errore durante l'esecuzione dell'ordine: {str(e)}")
 
+# Funzione per vendere
+def vendi(symbol, symbol_to_sell):
+    try:
+        # Carica i mercati dell'exchange
+        exchange_operation.load_markets()
+
+        # Ottieni il saldo corrente di BXN
+        balance = exchange_operation.fetch_balance()
+        balance_to_sell = balance['total'][symbol_to_sell]
+
+        # Se serve aggiungi (balance_to_sell * x) dove x è un numero da 0 ad 1 per vendere solo una parte del saldo
+        amount_to_sell = balance_to_sell
+
+        if amount_to_sell <= 0:
+            print("Saldo insufficiente per effettuare la vendita.")
+            return
+
+        # Ottieni il prezzo di mercato corrente per BXN/USDT
+        ticker = exchange_operation.fetch_ticker(symbol)
+        market_price = ticker['last']
+
+        print(f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}")
+
+        # Esegui un ordine di vendita al mercato
+        order = exchange_operation.create_market_buy_order(symbol, amount_to_sell)
+
+        print("Ordine di vendita eseguito con successo:")
+        print(order)
+
+    except Exception as e:
+        print(f"Errore durante l'esecuzione dell'ordine: {str(e)}")
 
 def generate_signals(df):
     signals = []
@@ -160,13 +190,13 @@ while True:
         df_filtrato_sell=df_filtrato_sell.sort_values(by='timestamp', ascending=False)
         print(df_filtrato_buy)
         print(df_filtrato_sell)
-        # print(df2)   -- stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
-        '''if COMPRO_VENDO_FLAG:
+        print(df2)   # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
+        if COMPRO_VENDO_FLAG:
             if not df_filtrato_buy.empty:
-                execute_trade_all(exchange_operation, symbol, 'BUY')
+                acquista(symbol)
 
             if not df_filtrato_sell.empty:
-                execute_trade_all(exchange_operation, symbol, 'SELL')'''
+                vendi(symbol, symbol_to_sell)
 
         if False:
             # Visualizzazione grafica
