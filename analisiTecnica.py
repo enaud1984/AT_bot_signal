@@ -10,7 +10,7 @@ from param import *
 
 
 COMPRO_VENDO_FLAG=False
-saldo_iniziale = 5000
+#saldo_iniziale = 5000
 
 hist_timeframe = '6h'
 hist_limit = 365*4
@@ -24,7 +24,6 @@ timeperiod_RSI = 14
 
 time_sleep = 21600
 symbol='BTC/USDT'
-symbol_to_sell = 'BTC'
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
 exchange_hist = ccxt.kucoin({
@@ -72,8 +71,9 @@ def acquista(symbol):
         print(f"Errore durante l'esecuzione dell'ordine: {str(e)}")
 
 # Funzione per vendere
-def vendi(symbol, symbol_to_sell):
+def vendi(symbol):
     try:
+        symbol_to_sell=symbol.split('/')[0]
         # Carica i mercati dell'exchange
         exchange_operation.load_markets()
 
@@ -196,7 +196,7 @@ while True:
                 acquista(symbol)
 
             if not df_filtrato_sell.empty:
-                vendi(symbol, symbol_to_sell)
+                vendi(symbol)
 
         if False:
             # Visualizzazione grafica
