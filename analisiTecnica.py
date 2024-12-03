@@ -1,4 +1,3 @@
-import os
 from traceback import print_tb
 import logging
 import talib
@@ -25,8 +24,7 @@ signalperiod = 9
 timeperiod_RSI = 14
 
 time_sleep = 21600
-symbol = 'BTC/USDT'
-symbol_to_sell = 'BTC'
+symbol='BTC/USDT'
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
 exchange_hist = ccxt.kucoin({
@@ -40,18 +38,6 @@ exchange_operation = ccxt.bitfinex({
     'secret': SECRET_KEY_bitfinex,
     'enableRateLimit': True,
 })
-
-if not os.path.exists("log"):
-    os.makedirs("log")
-
-logging.basicConfig(
-    filename='log/logfile.log',  # Nome del file di log
-    level=logging.INFO,      # Livello del log
-    format='%(asctime)s - %(levelname)s - %(message)s',  # Formato del log
-    datefmt='%Y-%m-%d %H:%M:%S'  # Formato del timestamp
-)
-
-
 
 # Funzione per acquistare
 def acquista(symbol):
@@ -86,8 +72,9 @@ def acquista(symbol):
         logging.error(f"Errore durante l'esecuzione dell'ordine: {e}")
 
 # Funzione per vendere
-def vendi(symbol, symbol_to_sell):
+def vendi(symbol):
     try:
+        symbol_to_sell=symbol.split('/')[0]
         # Carica i mercati dell'exchange
         exchange_operation.load_markets()
 
