@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import time
 from param import *
 
-
 COMPRO_VENDO_FLAG=False
 PLOT=False
 saldo_iniziale = 5000
