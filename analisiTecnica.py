@@ -1,4 +1,3 @@
-from traceback import print_tb
 import logging
 import talib
 import numpy as np
