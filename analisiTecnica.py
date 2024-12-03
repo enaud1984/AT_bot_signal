@@ -204,7 +204,7 @@ if __name__ == "__main__":
                         acquista(symbol)
 
                     if not df_filtrato_sell.empty:
-                        vendi(symbol, symbol_to_sell)
+                        vendi(symbol)
 
                 if PLOT:
                     # Visualizzazione grafica
