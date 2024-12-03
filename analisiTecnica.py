@@ -7,7 +7,6 @@ import pandas as pd
 import ccxt
 import matplotlib.pyplot as plt
 import time
-from datetime import datetime
 from param import *
 
 
