@@ -1,7 +1,7 @@
 import os
 import logging
 #import talib
-import pandas_ta as talib
+import pandas_ta as ta
 import numpy as np
 import pandas as pd
 import ccxt
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     logging.info("START BOT")
     while True:
         try:
-            bars = exchange_hist.fetch_ohlcv(symbol, timeframe='6h', limit=365*4)
+            bars = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, limit=hist_limit)
             df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         except Exception as e:
             logging.error("Errore nel recupero dei dati:", e)
@@ -175,10 +175,12 @@ if __name__ == "__main__":
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
                 # Calcola gli indicatori
-                df['SMA_50'] = talib.sma(df['close'], timeperiod=timeperiod_SMA50)
-                df['SMA_200'] = talib.sma(df['close'], timeperiod=timeperiod_SMA200)
-                df['MACD'], df['MACD_signal'], _ = talib.macd(df['close'], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
-                df['RSI'] = talib.rsi(df['close'], timeperiod=timeperiod_RSI)
+                df['SMA_50'] = df.ta.sma(length=timeperiod_SMA50)
+                df['SMA_200'] = df.ta.sma(length=timeperiod_SMA200)
+                macd = df.ta.macd(fast=fastperiod, slow=slowperiod, signal=signalperiod)
+                df['MACD'] = macd['MACD_12_26_9']
+                df['MACD_signal'] = macd['MACDs_12_26_9']
+                df['RSI'] = df.ta.rsi(length=timeperiod_RSI)
 
                 # Funzione per generare segnali di acquisto e vendita alternati con stop loss e take profit
                 df = generate_signals(df)
@@ -196,16 +198,17 @@ if __name__ == "__main__":
                 )
 
                 # Aggiungi il saldo progressivo
-                df2['balance'] = np.nan  # Inizializziamo con NaN
-                df2.loc[0, 'balance'] = saldo_iniziale  # Impostiamo il saldo iniziale per la prima riga
+                df2['balance'] = np.nan  # Inizializziamo con NaN, così possiamo calcolare il saldo per ogni riga
+                df2.iloc[0, df2.columns.get_loc(
+                    'balance')] = saldo_iniziale  # Impostiamo il saldo iniziale per la prima riga
 
-                # Calcoliamo il saldo progressivo utilizzando .iloc per evitare il KeyError
+                # Calcoliamo il saldo progressivo
                 for i in range(1, len(df2)):
-                    if not pd.isna(df2.iloc[i]['result']):  # Se il risultato non è NaN
-                        df2.iloc[i, df2.columns.get_loc('balance')] = df2.iloc[i - 1, df2.columns.get_loc('balance')] * (1 + df2.iloc[i]['result'] / 100)
+                    if not pd.isna(df2['result'].iloc[i]):  # Se il risultato non è NaN
+                        df2['balance'].iloc[i] = df2['balance'].iloc[i - 1] * (1 + df2['result'].iloc[i] / 100)
                     else:
                         # Se il risultato è NaN, mantieni il saldo invariato
-                        df2.iloc[i, df2.columns.get_loc('balance')] = df2.iloc[i - 1, df2.columns.get_loc('balance')]
+                        df2['balance'].iloc[i] = df2['balance'].iloc[i - 1]
 
                 buy_signals = df[df['Signal'] == 'BUY']
                 sell_signals = df[df['Signal'] == 'SELL']
@@ -233,9 +236,15 @@ if __name__ == "__main__":
                     plt.plot(df['timestamp'], df['close'], label='Prezzo di Chiusura', color='blue')
                     plt.plot(df['timestamp'], df['SMA_50'], label='SMA 50', color='orange')
                     plt.plot(df['timestamp'], df['SMA_200'], label='SMA 200', color='green')
+
                     # Aggiunta dei segnali di acquisto e vendita
-                    plt.scatter(df_filtrato_buy['timestamp'], df_filtrato_buy['close'], marker='^', color='green', label='Segnale di Acquisto', alpha=1)
-                    plt.scatter(df_filtrato_sell['timestamp'], df_filtrato_sell['close'], marker='v', color='red', label='Segnale di Vendita', alpha=1)
+                    buy_signals = df[df['Signal'] == 'BUY']
+                    sell_signals = df[df['Signal'] == 'SELL']
+                    plt.scatter(buy_signals['timestamp'], buy_signals['close'], marker='^', color='green',
+                                label='Segnale di Acquisto', alpha=1)
+                    plt.scatter(sell_signals['timestamp'], sell_signals['close'], marker='v', color='red',
+                                label='Segnale di Vendita', alpha=1)
+
                     plt.title(f'Strategia di Segnale di Acquisto e Vendita su {symbol} con Stop Loss e Take Profit')
                     plt.xlabel('Data')
                     plt.ylabel('Prezzo (USD)')
