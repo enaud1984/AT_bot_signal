@@ -1,4 +1,4 @@
-from traceback import print_tb
+import os
 import logging
 import talib
 import numpy as np
@@ -38,6 +38,15 @@ exchange_operation = ccxt.bitfinex({
     'secret': SECRET_KEY_bitfinex,
     'enableRateLimit': True,
 })
+if not os.path.exists("log"):
+    os.makedirs("log")
+
+logging.basicConfig(
+    filename='log/logfile.log',  # Nome del file di log
+    level=logging.INFO,      # Livello del log
+    format='%(asctime)s - %(levelname)s - %(message)s',  # Formato del log
+    datefmt='%Y-%m-%d %H:%M:%S'  # Formato del timestamp
+)
 
 # Funzione per acquistare
 def acquista(symbol):
