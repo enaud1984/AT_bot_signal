@@ -1,4 +1,3 @@
-import os
 import logging
 #import talib
 import pandas_ta as ta
@@ -10,10 +9,11 @@ import time
 import os
 from param import *
 
-
-COMPRO_VENDO_FLAG=False
+single_shot = True
+COMPRO_VENDO_FLAG=True
 PLOT=False
 saldo_iniziale = 5000
+
 
 hist_timeframe = '6h'
 hist_limit = 365*4
@@ -40,15 +40,6 @@ exchange_operation = ccxt.bitfinex({
     'secret': SECRET_KEY_bitfinex,
     'enableRateLimit': True,
 })
-if not os.path.exists("log"):
-    os.makedirs("log")
-
-logging.basicConfig(
-    filename='log/logfile.log',  # Nome del file di log
-    level=logging.INFO,      # Livello del log
-    format='%(asctime)s - %(levelname)s - %(message)s',  # Formato del log
-    datefmt='%Y-%m-%d %H:%M:%S'  # Formato del timestamp
-)
 
 if not os.path.exists("log"):
     os.makedirs("log")
@@ -251,6 +242,10 @@ if __name__ == "__main__":
                     plt.legend(loc='best')
                     plt.grid()
                     plt.show()
+
+                if single_shot:
+                    break
+
                 time.sleep(time_sleep)
         except Exception as e:
             logging.error("Errore nella generazione dei risultati:", e)
