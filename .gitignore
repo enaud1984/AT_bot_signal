@@ -1,4 +1,4 @@
 param.py
-.venv
-.idea
+.venv/
+.idea/
 log
