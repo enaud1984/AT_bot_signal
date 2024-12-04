@@ -1,10 +1,12 @@
 import logging
-import talib
+#import talib
+import pandas_ta as talib
 import numpy as np
 import pandas as pd
 import ccxt
 import matplotlib.pyplot as plt
 import time
+import os
 from param import *
 
 COMPRO_VENDO_FLAG=False
@@ -36,6 +38,16 @@ exchange_operation = ccxt.bitfinex({
     'secret': SECRET_KEY_bitfinex,
     'enableRateLimit': True,
 })
+
+if not os.path.exists("log"):
+    os.makedirs("log")
+
+logging.basicConfig(
+    filename='log/logfile.log',  # Nome del file di log
+    level=logging.INFO,      # Livello del log
+    format='%(asctime)s - %(levelname)s - %(message)s',  # Formato del log
+    datefmt='%Y-%m-%d %H:%M:%S'  # Formato del timestamp
+)
 
 # Funzione per acquistare
 def acquista(symbol):
@@ -152,10 +164,10 @@ if __name__ == "__main__":
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
                 # Calcola gli indicatori
-                df['SMA_50'] = talib.SMA(df['close'], timeperiod=timeperiod_SMA50)
-                df['SMA_200'] = talib.SMA(df['close'], timeperiod=timeperiod_SMA200)
-                df['MACD'], df['MACD_signal'], _ = talib.MACD(df['close'], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
-                df['RSI'] = talib.RSI(df['close'], timeperiod=timeperiod_RSI)
+                df['SMA_50'] = talib.sma(df['close'], timeperiod=timeperiod_SMA50)
+                df['SMA_200'] = talib.sma(df['close'], timeperiod=timeperiod_SMA200)
+                df['MACD'], df['MACD_signal'], _ = talib.macd(df['close'], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
+                df['RSI'] = talib.rsi(df['close'], timeperiod=timeperiod_RSI)
 
                 # Funzione per generare segnali di acquisto e vendita alternati con stop loss e take profit
                 df = generate_signals(df)
