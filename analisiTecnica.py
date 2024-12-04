@@ -1,32 +1,19 @@
 import logging
+import shutil
 #import talib
-import pandas_ta as ta
+import pandas_ta as talib
 import numpy as np
 import pandas as pd
 import ccxt
 import matplotlib.pyplot as plt
 import time
 import os
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
+import threading
 from param import *
-
-single_shot = True
-COMPRO_VENDO_FLAG=True
-PLOT=False
-saldo_iniziale = 5000
-
-
-hist_timeframe = '6h'
-hist_limit = 365*4
-
-timeperiod_SMA50 = 50
-timeperiod_SMA200 = 200
-fastperiod = 12
-slowperiod = 26
-signalperiod = 9
-timeperiod_RSI = 14
-
-time_sleep = 21600
-symbol='BTC/USDT'
+from key import *
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
 exchange_hist = ccxt.kucoin({
@@ -45,11 +32,13 @@ if not os.path.exists("log"):
     os.makedirs("log")
 
 logging.basicConfig(
-    filename='log/logfile.log',  # Nome del file di log
+    filename=f'{LOG_FILE_PATH}/logfile.log',  # Nome del file di log
     level=logging.INFO,      # Livello del log
     format='%(asctime)s - %(levelname)s - %(message)s',  # Formato del log
     datefmt='%Y-%m-%d %H:%M:%S'  # Formato del timestamp
 )
+
+app = FastAPI()
 
 # Funzione per acquistare
 def acquista(symbol):
@@ -150,9 +139,30 @@ def generate_signals(df):
     df['Signal'] = signals
     return df
 
+@app.get("/")
+async def read_root():
+    try:
+        temp_log_path = f'{LOG_FILE_PATH}/temp_logfile.log'
+        shutil.copyfile(f'{LOG_FILE_PATH}/logfile.log', temp_log_path)
+        with open(temp_log_path, "r") as file:
+            log_content = file.readlines()
+            # Crea una stringa HTML che contiene le righe del log
+            log_html = "<html><body><h1>Contenuto del log</h1><pre>"
+            for line in log_content:
+                log_html += line
+            log_html += "</pre></body></html>"
+            return HTMLResponse(content=log_html)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Errore durante la lettura del file di log: {str(e)}")
+
+
+def start_fastapi_server():
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 if __name__ == "__main__":
     logging.info("START BOT")
+    threading.Thread(target=start_fastapi_server, daemon=True).start()
     while True:
         try:
             bars = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, limit=hist_limit)
