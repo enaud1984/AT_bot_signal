@@ -9,9 +9,11 @@ import time
 import os
 from param import *
 
-COMPRO_VENDO_FLAG=False
+single_shot = True
+COMPRO_VENDO_FLAG=True
 PLOT=False
 saldo_iniziale = 5000
+
 
 hist_timeframe = '6h'
 hist_limit = 365*4
@@ -240,6 +242,10 @@ if __name__ == "__main__":
                     plt.legend(loc='best')
                     plt.grid()
                     plt.show()
+
+                if single_shot:
+                    break
+
                 time.sleep(time_sleep)
         except Exception as e:
             logging.error("Errore nella generazione dei risultati:", e)
