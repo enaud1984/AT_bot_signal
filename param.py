@@ -1,6 +1,6 @@
 single_shot = True
 COMPRO_VENDO_FLAG=False
-PLOT=True
+PLOT=False
 saldo_iniziale = 5000
 
 hist_timeframe = '6h'

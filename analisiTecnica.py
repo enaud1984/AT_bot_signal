@@ -162,7 +162,9 @@ def start_fastapi_server():
 
 if __name__ == "__main__":
     logging.info("START BOT")
-    threading.Thread(target=start_fastapi_server, daemon=True).start()
+    if not single_shot:
+        threading.Thread(target=start_fastapi_server, daemon=True).start()
+
     while True:
         try:
             bars = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, limit=hist_limit)
