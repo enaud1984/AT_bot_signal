@@ -68,6 +68,7 @@ def acquista(symbol):
 
         logging.info("Ordine di acquisto eseguito con successo:")
         print(order)
+        
 
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {e}")
