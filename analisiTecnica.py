@@ -215,7 +215,7 @@ if __name__ == "__main__":
 
                 buy_signals = df[df['Signal'] == 'BUY']
                 sell_signals = df[df['Signal'] == 'SELL']
-                oggi = pd.Timestamp.today() - pd.Timedelta(hours=1)
+                oggi = pd.Timestamp.today() - pd.Timedelta(minutes=5)
 
                 df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
                 df_filtrato_buy=df_filtrato_buy.sort_values(by='timestamp', ascending=False)
