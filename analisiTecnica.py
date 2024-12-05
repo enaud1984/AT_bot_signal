@@ -221,6 +221,7 @@ if __name__ == "__main__":
                 df_filtrato_buy=df_filtrato_buy.sort_values(by='timestamp', ascending=False)
                 df_filtrato_sell = sell_signals[sell_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
                 df_filtrato_sell=df_filtrato_sell.sort_values(by='timestamp', ascending=False)
+                pd.options.display.max_columns=None
                 print(df_filtrato_buy)
                 print(df_filtrato_sell)
                 if df_filtrato_buy.empty and df_filtrato_sell.empty:
