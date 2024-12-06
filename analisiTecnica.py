@@ -1,5 +1,7 @@
 import logging
 import shutil
+from datetime import datetime
+
 #import talib
 import pandas_ta as talib
 import numpy as np
@@ -167,20 +169,25 @@ if __name__ == "__main__":
         threading.Thread(target=start_fastapi_server, daemon=True).start()
 
     while True:
+        df=None
         try:
-            bars = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, limit=hist_limit)
+            since_datetime = datetime.strptime(date_start, "%Y-%m-%d %H:%M:%S")
+            # Conversione in timestamp Unix (millisecondi)
+            since = int(since_datetime.timestamp() * 1000)
+            bars = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, since=since, limit=hist_limit)
             df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         except Exception as e:
             logging.error("Errore nel recupero dei dati:", e)
             bars = []  # Lasciamo vuoto se c'è un errore di connessione
 
         try:
-            if bars:
+            if bars and df is not None:
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
                 # Calcola gli indicatori
                 df['SMA_50'] = df.ta.sma(length=timeperiod_SMA50)
                 df['SMA_200'] = df.ta.sma(length=timeperiod_SMA200)
+
                 macd = df.ta.macd(fast=fastperiod, slow=slowperiod, signal=signalperiod)
                 df['MACD'] = macd['MACD_12_26_9']
                 df['MACD_signal'] = macd['MACDs_12_26_9']
@@ -207,13 +214,14 @@ if __name__ == "__main__":
                     'balance')] = saldo_iniziale  # Impostiamo il saldo iniziale per la prima riga
 
                 # Calcoliamo il saldo progressivo
+                """
                 for i in range(1, len(df2)):
                     if not pd.isna(df2['result'].iloc[i]):  # Se il risultato non è NaN
                         df2['balance'].iloc[i] = df2['balance'].iloc[i - 1] * (1 + df2['result'].iloc[i] / 100)
                     else:
                         # Se il risultato è NaN, mantieni il saldo invariato
                         df2['balance'].iloc[i] = df2['balance'].iloc[i - 1]
-
+                """
                 buy_signals = df[df['Signal'] == 'BUY']
                 sell_signals = df[df['Signal'] == 'SELL']
                 oggi = pd.Timestamp.today() - pd.Timedelta(minutes=5)
