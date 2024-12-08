@@ -10,12 +10,14 @@ import ccxt
 import matplotlib.pyplot as plt
 import time
 import os
+import sns
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 import threading
 from param import *
 from key import *
+
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
 exchange_hist = ccxt.kucoin({
@@ -63,14 +65,16 @@ def acquista(symbol):
         ticker = exchange_operation.fetch_ticker(symbol)
         market_price = ticker['last']
 
-        logging.info(f"Saldo USDT: {usdt_balance}, Importo da spendere: {amount_to_spend}, Prezzo di mercato: {market_price}, Importo BXN da acquistare: {amount_to_spend}")
+        logging.info(f"Saldo USDT: {usdt_balance}, Importo da spendere: {amount_to_spend}, "
+                     f"Prezzo di mercato: {market_price}, Importo BXN da acquistare: {amount_to_spend}")
 
         # Esegui un ordine di acquisto al mercato
         order = exchange_operation.create_market_buy_order(symbol, amount_to_spend)
 
         logging.info("Ordine di acquisto eseguito con successo:")
         print(order)
-        
+        sns.sendNotify(f"Saldo USDT: {usdt_balance}, Importo da spendere: {amount_to_spend}, "
+                       f"Prezzo di mercato: {market_price}, Importo BXN da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo")
 
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {e}")
@@ -104,6 +108,7 @@ def vendi(symbol):
 
         logging.info("Ordine di vendita eseguito con successo:")
         print(order)
+        sns.sendNotify(f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:")
 
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {str(e)}")
@@ -235,6 +240,7 @@ if __name__ == "__main__":
                 print(df_filtrato_sell)
                 if df_filtrato_buy.empty and df_filtrato_sell.empty:
                     logging.info("Nessuna operazione effettuata")
+                    sns.sendNotify("Nessuna operazione effettuata")
                 print(df2)   # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
                 if COMPRO_VENDO_FLAG:
                     if not df_filtrato_buy.empty:
@@ -271,3 +277,4 @@ if __name__ == "__main__":
                 time.sleep(time_sleep)
         except Exception as e:
             logging.error("Errore nella generazione dei risultati:", e)
+            sns.sendNotify("Errore nella generazione dei risultati:")
