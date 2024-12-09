@@ -21,7 +21,7 @@ from key import *
 
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
-exchange_hist = ccxt.kucoin({
+exchange_hist = ccxt.bitfinex({
     'apiKey': '',
     'secret': '',
     'enableRateLimit': True,
@@ -148,6 +148,13 @@ def generate_signals(df):
     df['Signal'] = signals
     return df
 
+def convertToLocalTime(df):
+    # Converti la colonna timestamp in datetime e assegna il fuso orario UTC
+    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+    # Converti in fuso orario Europe/Rome
+    df['timestamp'] = df['timestamp'].dt.tz_convert('Europe/Rome').dt.tz_localize(None)
+    return df
+
 @app.get("/")
 async def read_root():
     try:
@@ -191,10 +198,6 @@ if __name__ == "__main__":
         try:
             if bars and df is not None:
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-                # Converti la colonna timestamp in datetime e assegna il fuso orario UTC
-                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
-                # Converti in fuso orario Europe/Rome
-                df['timestamp'] = df['timestamp'].dt.tz_convert('Europe/Rome').dt.tz_localize(None)
 
                 # Calcola gli indicatori
                 df['SMA_50'] = df.ta.sma(length=timeperiod_SMA50)
