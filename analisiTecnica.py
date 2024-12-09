@@ -176,6 +176,119 @@ def start_fastapi_server():
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
+def operation(symbol):
+    df = None
+    try:
+        since_datetime = datetime.strptime(date_start, "%Y-%m-%d %H:%M:%S")
+        # Conversione in timestamp Unix (millisecondi)
+        since = int(since_datetime.timestamp() * 1000)
+        bars = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, since=since, limit=hist_limit)
+        df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+    except Exception as e:
+        logging.error("Errore nel recupero dei dati:", e)
+        bars = []  # Lasciamo vuoto se c'è un errore di connessione
+
+    try:
+        if bars and df is not None:
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+
+            # Calcola gli indicatori
+            if len(df) >=50:
+                df['SMA_50'] = df.ta.sma(length=timeperiod_SMA50)
+            else:
+                logging.error("Df non sufficientemente grande per SMA_50")
+                raise Exception("Df non sufficientemente grande per SMA_50")
+
+            if len(df) >=200:
+                df['SMA_200'] = df.ta.sma(length=timeperiod_SMA200)
+            else:
+                logging.error("Df non sufficientemente grande per SMA_200")
+                raise Exception("Df non sufficientemente grande per SMA_200")
+
+            macd = df.ta.macd(fast=fastperiod, slow=slowperiod, signal=signalperiod)
+            df['MACD'] = macd['MACD_12_26_9']
+            df['MACD_signal'] = macd['MACDs_12_26_9']
+            df['RSI'] = df.ta.rsi(length=timeperiod_RSI)
+
+            # Funzione per generare segnali di acquisto e vendita alternati con stop loss e take profit
+            df = generate_signals(df)
+
+            # Calcolo del risultato solo per le righe con 'SELL'
+            df2 = df[df['Signal'] != "HOLD"][['timestamp', 'close', 'Signal']]
+
+            # Calcoliamo il valore percentuale solo per le righe con 'Signal' "SELL"
+            df2['last_buy_close'] = df2['close'].where(df2['Signal'] == 'BUY').ffill()
+
+            # Ricalcoliamo il 'result' usando il corretto approccio con .iloc
+            df2['result'] = np.nan  # Assicurarsi che la colonna 'result' esista
+            df2.loc[(df2['Signal'] == 'SELL') & (~df2['last_buy_close'].isna()), 'result'] = (
+                    (df2['close'] - df2['last_buy_close']) / df2['last_buy_close'] * 100
+            )
+
+            # Aggiungi il saldo progressivo
+            df2['balance'] = np.nan  # Inizializziamo con NaN, così possiamo calcolare il saldo per ogni riga
+            df2.iloc[0, df2.columns.get_loc(
+                'balance')] = saldo_iniziale  # Impostiamo il saldo iniziale per la prima riga
+
+            # Calcoliamo il saldo progressivo
+            """
+            for i in range(1, len(df2)):
+                if not pd.isna(df2['result'].iloc[i]):  # Se il risultato non è NaN
+                    df2['balance'].iloc[i] = df2['balance'].iloc[i - 1] * (1 + df2['result'].iloc[i] / 100)
+                else:
+                    # Se il risultato è NaN, mantieni il saldo invariato
+                    df2['balance'].iloc[i] = df2['balance'].iloc[i - 1]
+            """
+            buy_signals = df[df['Signal'] == 'BUY']
+
+            sell_signals = df[df['Signal'] == 'SELL']
+            oggi = pd.Timestamp.today() - pd.Timedelta(minutes=5)
+            print("Oggi:",oggi)
+            df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
+            df_filtrato_buy=df_filtrato_buy.sort_values(by='timestamp', ascending=False)
+            df_filtrato_sell = sell_signals[sell_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
+            df_filtrato_sell=df_filtrato_sell.sort_values(by='timestamp', ascending=False)
+            pd.options.display.max_columns=None
+            print(df_filtrato_buy)
+            print(df_filtrato_sell)
+            if df_filtrato_buy.empty and df_filtrato_sell.empty:
+                logging.info("Nessuna operazione effettuata")
+                sns.sendNotify("Nessuna operazione effettuata")
+            print(df2)   # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
+            if COMPRO_VENDO_FLAG:
+                if not df_filtrato_buy.empty:
+                    print("EFFETTUATA OPERAZIONE DI ACQUISTO")
+                    #acquista(symbol)
+
+                if not df_filtrato_sell.empty:
+                    print("EFFETTUATA OPERAZIONE DI VENDITA")
+                    #vendi(symbol)
+
+            if PLOT:
+                # Visualizzazione grafica
+                plt.figure(figsize=(14, 8))
+                plt.plot(df['timestamp'], df['close'], label='Prezzo di Chiusura', color='blue')
+                plt.plot(df['timestamp'], df['SMA_50'], label='SMA 50', color='orange')
+                plt.plot(df['timestamp'], df['SMA_200'], label='SMA 200', color='green')
+
+                # Aggiunta dei segnali di acquisto e vendita
+                buy_signals = df[df['Signal'] == 'BUY']
+                sell_signals = df[df['Signal'] == 'SELL']
+                plt.scatter(buy_signals['timestamp'], buy_signals['close'], marker='^', color='green',
+                            label='Segnale di Acquisto', alpha=1)
+                plt.scatter(sell_signals['timestamp'], sell_signals['close'], marker='v', color='red',
+                            label='Segnale di Vendita', alpha=1)
+
+                plt.title(f'Strategia di Segnale di Acquisto e Vendita su {symbol} con Stop Loss e Take Profit')
+                plt.xlabel('Data')
+                plt.ylabel('Prezzo (USD)')
+                plt.legend(loc='best')
+                plt.grid()
+                plt.show()
+    except Exception as e:
+        logging.error("Errore nella generazione dei risultati:", e)
+        sns.sendNotify("Errore nella generazione dei risultati:")
+
 if __name__ == "__main__":
     logging.info("START BOT")
     date_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -184,110 +297,9 @@ if __name__ == "__main__":
         threading.Thread(target=start_fastapi_server, daemon=True).start()
 
     while True:
-        df = None
-        try:
-            since_datetime = datetime.strptime(date_start, "%Y-%m-%d %H:%M:%S")
-            # Conversione in timestamp Unix (millisecondi)
-            since = int(since_datetime.timestamp() * 1000)
-            bars = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, since=since, limit=hist_limit)
-            df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        except Exception as e:
-            logging.error("Errore nel recupero dei dati:", e)
-            bars = []  # Lasciamo vuoto se c'è un errore di connessione
+        for symbol in symbol_list:
+            operation(symbol)
+        if single_shot:
+            break
 
-        try:
-            if bars and df is not None:
-                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-
-                # Calcola gli indicatori
-                df['SMA_50'] = df.ta.sma(length=timeperiod_SMA50)
-                df['SMA_200'] = df.ta.sma(length=timeperiod_SMA200)
-
-                macd = df.ta.macd(fast=fastperiod, slow=slowperiod, signal=signalperiod)
-                df['MACD'] = macd['MACD_12_26_9']
-                df['MACD_signal'] = macd['MACDs_12_26_9']
-                df['RSI'] = df.ta.rsi(length=timeperiod_RSI)
-
-                # Funzione per generare segnali di acquisto e vendita alternati con stop loss e take profit
-                df = generate_signals(df)
-
-                # Calcolo del risultato solo per le righe con 'SELL'
-                df2 = df[df['Signal'] != "HOLD"][['timestamp', 'close', 'Signal']]
-
-                # Calcoliamo il valore percentuale solo per le righe con 'Signal' "SELL"
-                df2['last_buy_close'] = df2['close'].where(df2['Signal'] == 'BUY').ffill()
-
-                # Ricalcoliamo il 'result' usando il corretto approccio con .iloc
-                df2['result'] = np.nan  # Assicurarsi che la colonna 'result' esista
-                df2.loc[(df2['Signal'] == 'SELL') & (~df2['last_buy_close'].isna()), 'result'] = (
-                        (df2['close'] - df2['last_buy_close']) / df2['last_buy_close'] * 100
-                )
-
-                # Aggiungi il saldo progressivo
-                df2['balance'] = np.nan  # Inizializziamo con NaN, così possiamo calcolare il saldo per ogni riga
-                df2.iloc[0, df2.columns.get_loc(
-                    'balance')] = saldo_iniziale  # Impostiamo il saldo iniziale per la prima riga
-
-                # Calcoliamo il saldo progressivo
-                """
-                for i in range(1, len(df2)):
-                    if not pd.isna(df2['result'].iloc[i]):  # Se il risultato non è NaN
-                        df2['balance'].iloc[i] = df2['balance'].iloc[i - 1] * (1 + df2['result'].iloc[i] / 100)
-                    else:
-                        # Se il risultato è NaN, mantieni il saldo invariato
-                        df2['balance'].iloc[i] = df2['balance'].iloc[i - 1]
-                """
-                buy_signals = df[df['Signal'] == 'BUY']
-
-                sell_signals = df[df['Signal'] == 'SELL']
-                oggi = pd.Timestamp.today() - pd.Timedelta(minutes=5)
-                print("Oggi:",oggi)
-                df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
-                df_filtrato_buy=df_filtrato_buy.sort_values(by='timestamp', ascending=False)
-                df_filtrato_sell = sell_signals[sell_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
-                df_filtrato_sell=df_filtrato_sell.sort_values(by='timestamp', ascending=False)
-                pd.options.display.max_columns=None
-                print(df_filtrato_buy)
-                print(df_filtrato_sell)
-                if df_filtrato_buy.empty and df_filtrato_sell.empty:
-                    logging.info("Nessuna operazione effettuata")
-                    sns.sendNotify("Nessuna operazione effettuata")
-                print(df2)   # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
-                if COMPRO_VENDO_FLAG:
-                    if not df_filtrato_buy.empty:
-                        print("EFFETTUATA OPERAZIONE DI ACQUISTO")
-                        #acquista(symbol)
-
-                    if not df_filtrato_sell.empty:
-                        print("EFFETTUATA OPERAZIONE DI VENDITA")
-                        #vendi(symbol)
-
-                if PLOT:
-                    # Visualizzazione grafica
-                    plt.figure(figsize=(14, 8))
-                    plt.plot(df['timestamp'], df['close'], label='Prezzo di Chiusura', color='blue')
-                    plt.plot(df['timestamp'], df['SMA_50'], label='SMA 50', color='orange')
-                    plt.plot(df['timestamp'], df['SMA_200'], label='SMA 200', color='green')
-
-                    # Aggiunta dei segnali di acquisto e vendita
-                    buy_signals = df[df['Signal'] == 'BUY']
-                    sell_signals = df[df['Signal'] == 'SELL']
-                    plt.scatter(buy_signals['timestamp'], buy_signals['close'], marker='^', color='green',
-                                label='Segnale di Acquisto', alpha=1)
-                    plt.scatter(sell_signals['timestamp'], sell_signals['close'], marker='v', color='red',
-                                label='Segnale di Vendita', alpha=1)
-
-                    plt.title(f'Strategia di Segnale di Acquisto e Vendita su {symbol} con Stop Loss e Take Profit')
-                    plt.xlabel('Data')
-                    plt.ylabel('Prezzo (USD)')
-                    plt.legend(loc='best')
-                    plt.grid()
-                    plt.show()
-
-                if single_shot:
-                    break
-
-                time.sleep(time_sleep)
-        except Exception as e:
-            logging.error("Errore nella generazione dei risultati:", e)
-            sns.sendNotify("Errore nella generazione dei risultati:")
+        time.sleep(time_sleep)
