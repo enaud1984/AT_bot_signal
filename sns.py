@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 import boto3
@@ -14,20 +15,18 @@ def sendNotify(message):
     try:
         dt = datetime.now()
         dt = dt.replace(microsecond=0)
-        message = f'{dt}\t{message}'
+        message = f'{dt}\t{json.dumps(message)}'
         # Pubblicazione del messaggio
         response = sns_client.publish(
             TopicArn=topic_arn_email,
             Message=message,
             Subject='Notifica at_bot'
         )
-        response = sns_client.publish(
+        response_sms = sns_client.publish(
             TopicArn=topic_arn_sms,
             Message=message,
             Subject='Notifica at_bot'
         )
 
-
-        print(f"Messaggio inviato. ID: {response['MessageId']}")
     except Exception as e:
         print('Errore invio Notifiche')

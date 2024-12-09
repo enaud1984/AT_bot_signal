@@ -73,8 +73,11 @@ def acquista(symbol):
 
         logging.info("Ordine di acquisto eseguito con successo:")
         print(order)
-        sns.sendNotify(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
+        '''sns.sendNotify(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
                        f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo")
+        '''
+        response_dict[symbol] = f'''Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
+                             Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo'''
 
         saldo_dict[symbol] = saldo_dict[symbol] - amount_to_spend
     except Exception as e:
@@ -109,7 +112,8 @@ def vendi(symbol):
 
         logging.info("Ordine di vendita eseguito con successo:")
         print(order)
-        sns.sendNotify(f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:")
+        #sns.sendNotify(f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:")
+        response_dict[symbol] = f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:"
         saldo_dict[symbol] = saldo_dict[symbol] + (amount_to_sell*market_price)
 
     except Exception as e:
@@ -255,7 +259,8 @@ def operation(symbol):
             print(df_filtrato_sell)
             if df_filtrato_buy.empty and df_filtrato_sell.empty:
                 logging.info(f"Nessuna operazione effettuata per Crypto {symbol}")
-                sns.sendNotify("Nessuna operazione effettuata")
+                response_dict[symbol] = f"Nessuna operazione effettuata per Crypto {symbol}"
+                #sns.sendNotify(f"Nessuna operazione effettuataper Crypto {symbol}")
             print(df2)   # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
             if COMPRO_VENDO_FLAG:
                 if not df_filtrato_buy.empty:
@@ -297,7 +302,7 @@ if __name__ == "__main__":
         threading.Thread(target=start_fastapi_server, daemon=True).start()
 
     saldo = exchange_operation.fetch_balance()['total']['USDT']/len(symbol_list)
-
+    response_dict = {}
     saldo_dict = {}
     for symbol in symbol_list:
         saldo_dict[symbol] = saldo
@@ -305,6 +310,8 @@ if __name__ == "__main__":
     while True:
         for symbol in symbol_list:
             operation(symbol)
+        if response_dict:
+            sns.sendNotify(response_dict)
         if single_shot:
             break
         time.sleep(time_sleep)
