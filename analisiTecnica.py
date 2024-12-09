@@ -66,7 +66,7 @@ def acquista(symbol):
         market_price = ticker['last']
 
         logging.info(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
-                     f"Prezzo di mercato: {market_price}, Importo BXN da acquistare: {amount_to_spend}")
+                     f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}")
 
         # Esegui un ordine di acquisto al mercato
         order = exchange_operation.create_market_buy_order(symbol, amount_to_spend)
@@ -74,7 +74,7 @@ def acquista(symbol):
         logging.info("Ordine di acquisto eseguito con successo:")
         print(order)
         sns.sendNotify(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
-                       f"Prezzo di mercato: {market_price}, Importo BXN da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo")
+                       f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo")
 
         saldo_dict[symbol] = saldo_dict[symbol] - amount_to_spend
     except Exception as e:
@@ -244,6 +244,7 @@ def operation(symbol):
 
             sell_signals = df[df['Signal'] == 'SELL']
             oggi = pd.Timestamp.today() - pd.Timedelta(minutes=5)
+            print("Symbol:",symbol)
             print("Oggi:",oggi)
             df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
             df_filtrato_buy=df_filtrato_buy.sort_values(by='timestamp', ascending=False)
@@ -253,16 +254,14 @@ def operation(symbol):
             print(df_filtrato_buy)
             print(df_filtrato_sell)
             if df_filtrato_buy.empty and df_filtrato_sell.empty:
-                logging.info("Nessuna operazione effettuata")
+                logging.info(f"Nessuna operazione effettuata per Crypto {symbol}")
                 sns.sendNotify("Nessuna operazione effettuata")
             print(df2)   # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
             if COMPRO_VENDO_FLAG:
                 if not df_filtrato_buy.empty:
-                    print("EFFETTUATA OPERAZIONE DI ACQUISTO")
                     acquista(symbol)
 
                 if not df_filtrato_sell.empty:
-                    print("EFFETTUATA OPERAZIONE DI VENDITA")
                     vendi(symbol)
 
             if PLOT:
