@@ -52,11 +52,10 @@ def acquista(symbol):
         exchange_operation.load_markets()
 
         # Ottieni il saldo corrente in USDT
-        balance = exchange_operation.fetch_balance()
-        usdt_balance = balance['total']['USDT']
+        #balance = exchange_operation.fetch_balance()
+        #usdt_balance = balance['total']['USDT']
 
-        # Calcola il 30% del saldo in USDT
-        amount_to_spend = usdt_balance
+        amount_to_spend = saldo_dict[symbol]
 
         if amount_to_spend <= 0:
             logging.warning("Saldo insufficiente in USDT per effettuare l'acquisto.")
@@ -66,7 +65,7 @@ def acquista(symbol):
         ticker = exchange_operation.fetch_ticker(symbol)
         market_price = ticker['last']
 
-        logging.info(f"Saldo USDT: {usdt_balance}, Importo da spendere: {amount_to_spend}, "
+        logging.info(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
                      f"Prezzo di mercato: {market_price}, Importo BXN da acquistare: {amount_to_spend}")
 
         # Esegui un ordine di acquisto al mercato
@@ -74,9 +73,10 @@ def acquista(symbol):
 
         logging.info("Ordine di acquisto eseguito con successo:")
         print(order)
-        sns.sendNotify(f"Saldo USDT: {usdt_balance}, Importo da spendere: {amount_to_spend}, "
+        sns.sendNotify(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
                        f"Prezzo di mercato: {market_price}, Importo BXN da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo")
 
+        saldo_dict[symbol] = saldo_dict[symbol] - amount_to_spend
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {e}")
 
@@ -87,7 +87,7 @@ def vendi(symbol):
         # Carica i mercati dell'exchange
         exchange_operation.load_markets()
 
-        # Ottieni il saldo corrente di BXN
+        # Ottieni il saldo corrente della crypto
         balance = exchange_operation.fetch_balance()
         balance_to_sell = balance['total'][symbol_to_sell]
 
@@ -110,6 +110,7 @@ def vendi(symbol):
         logging.info("Ordine di vendita eseguito con successo:")
         print(order)
         sns.sendNotify(f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:")
+        saldo_dict[symbol] = saldo_dict[symbol] + (amount_to_sell*market_price)
 
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {str(e)}")
@@ -258,11 +259,11 @@ def operation(symbol):
             if COMPRO_VENDO_FLAG:
                 if not df_filtrato_buy.empty:
                     print("EFFETTUATA OPERAZIONE DI ACQUISTO")
-                    #acquista(symbol)
+                    acquista(symbol)
 
                 if not df_filtrato_sell.empty:
                     print("EFFETTUATA OPERAZIONE DI VENDITA")
-                    #vendi(symbol)
+                    vendi(symbol)
 
             if PLOT:
                 # Visualizzazione grafica
@@ -296,10 +297,15 @@ if __name__ == "__main__":
     if not single_shot:
         threading.Thread(target=start_fastapi_server, daemon=True).start()
 
+    saldo = exchange_operation.fetch_balance()['total']['USDT']/len(symbol_list)
+
+    saldo_dict = {}
+    for symbol in symbol_list:
+        saldo_dict[symbol] = saldo
+
     while True:
         for symbol in symbol_list:
             operation(symbol)
         if single_shot:
             break
-
         time.sleep(time_sleep)
