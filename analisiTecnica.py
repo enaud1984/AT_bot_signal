@@ -1,6 +1,7 @@
 import logging
 import shutil
 from datetime import datetime
+import pytz
 
 #import talib
 import pandas_ta as talib
@@ -170,11 +171,13 @@ def start_fastapi_server():
 
 if __name__ == "__main__":
     logging.info("START BOT")
+    date_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logging.info(f"DateTimestamp: {date_time}")
     if not single_shot:
         threading.Thread(target=start_fastapi_server, daemon=True).start()
 
     while True:
-        df=None
+        df = None
         try:
             since_datetime = datetime.strptime(date_start, "%Y-%m-%d %H:%M:%S")
             # Conversione in timestamp Unix (millisecondi)
@@ -188,6 +191,10 @@ if __name__ == "__main__":
         try:
             if bars and df is not None:
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+                # Converti la colonna timestamp in datetime e assegna il fuso orario UTC
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
+                # Converti in fuso orario Europe/Rome
+                df['timestamp'] = df['timestamp'].dt.tz_convert('Europe/Rome').dt.tz_localize(None)
 
                 # Calcola gli indicatori
                 df['SMA_50'] = df.ta.sma(length=timeperiod_SMA50)
@@ -228,9 +235,10 @@ if __name__ == "__main__":
                         df2['balance'].iloc[i] = df2['balance'].iloc[i - 1]
                 """
                 buy_signals = df[df['Signal'] == 'BUY']
+
                 sell_signals = df[df['Signal'] == 'SELL']
                 oggi = pd.Timestamp.today() - pd.Timedelta(minutes=5)
-
+                print("Oggi:",oggi)
                 df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
                 df_filtrato_buy=df_filtrato_buy.sort_values(by='timestamp', ascending=False)
                 df_filtrato_sell = sell_signals[sell_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
@@ -244,10 +252,12 @@ if __name__ == "__main__":
                 print(df2)   # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
                 if COMPRO_VENDO_FLAG:
                     if not df_filtrato_buy.empty:
-                        acquista(symbol)
+                        print("EFFETTUATA OPERAZIONE DI ACQUISTO")
+                        #acquista(symbol)
 
                     if not df_filtrato_sell.empty:
-                        vendi(symbol)
+                        print("EFFETTUATA OPERAZIONE DI VENDITA")
+                        #vendi(symbol)
 
                 if PLOT:
                     # Visualizzazione grafica
