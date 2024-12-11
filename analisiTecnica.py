@@ -69,17 +69,20 @@ def acquista(symbol):
                      f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}")
 
         # Esegui un ordine di acquisto al mercato
-        order = exchange_operation.create_market_buy_order(symbol, amount_to_spend)
+        #fee_rate = 0.01
+        max_btc_buy = amount_to_spend / market_price #* (1 - fee_rate)
+        print(f"Quantità massima di BTC acquistabile: {max_btc_buy}")
+        order = exchange_operation.create_market_buy_order(symbol, max_btc_buy)
 
         logging.info("Ordine di acquisto eseguito con successo:")
         print(order)
         '''sns.sendNotify(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
                        f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo")
         '''
-        response_dict[symbol] = f'''Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
+        response_dict[symbol] = f'''Saldo USDT: {amount_to_spend}, Importo da spendere: {max_btc_buy*market_price}, "
                              Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo'''
 
-        saldo_dict[symbol] = saldo_dict[symbol] - amount_to_spend
+        saldo_dict[symbol] = saldo_dict[symbol] - max_btc_buy
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {e}")
 
@@ -95,7 +98,7 @@ def vendi(symbol):
         balance_to_sell = balance['total'][symbol_to_sell]
 
         # Se serve aggiungi (balance_to_sell * x) dove x è un numero da 0 ad 1 per vendere solo una parte del saldo
-        amount_to_sell = balance_to_sell
+        amount_to_sell = balance_to_sell # Vendere tutti i BTC disponibili
 
         if amount_to_sell <= 0:
             logging.warning("Saldo insufficiente per effettuare la vendita.")
@@ -248,6 +251,7 @@ def operation(symbol):
 
             sell_signals = df[df['Signal'] == 'SELL']
             oggi = pd.Timestamp.today() - pd.Timedelta(minutes=5)
+            #oggi = pd.Timestamp.today() - pd.Timedelta(hours=15)
             print("Symbol:",symbol)
             print("Oggi:",oggi)
             df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
@@ -293,6 +297,7 @@ def operation(symbol):
     except Exception as e:
         logging.error("Errore nella generazione dei risultati:", e)
         sns.sendNotify("Errore nella generazione dei risultati:")
+
 
 if __name__ == "__main__":
     logging.info("START BOT")
