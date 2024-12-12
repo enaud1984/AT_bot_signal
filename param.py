@@ -17,5 +17,7 @@ timeperiod_RSI = 14
 time_sleep = 21600
 symbol_list = ['BTC/USDT']
 
-LOG_FILE_PATH="log"
+fee_percent_sell = 0.002
+
+LOG_FILE_PATH = "log"
 

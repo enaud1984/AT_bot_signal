@@ -117,7 +117,8 @@ def vendi(symbol):
         print(order)
         #sns.sendNotify(f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:")
         response_dict[symbol] = f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:"
-        saldo_dict[symbol] = saldo_dict[symbol] + (amount_to_sell*market_price)
+        fee_cost = amount_to_sell * market_price * fee_percent_sell
+        saldo_dict[symbol] = saldo_dict[symbol] + (amount_to_sell*market_price) - fee_cost
 
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {str(e)}")
