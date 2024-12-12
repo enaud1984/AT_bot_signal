@@ -82,7 +82,7 @@ def acquista(symbol):
         response_dict[symbol] = f'''Saldo USDT: {amount_to_spend}, Importo da spendere: {max_btc_buy*market_price}, "
                              Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo'''
 
-        saldo_dict[symbol] = saldo_dict[symbol] - max_btc_buy
+        saldo_dict[symbol] = saldo_dict[symbol] - (max_btc_buy*market_price)
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {e}")
 
@@ -307,6 +307,7 @@ if __name__ == "__main__":
         threading.Thread(target=start_fastapi_server, daemon=True).start()
 
     saldo = exchange_operation.fetch_balance()['total']['USDT']/len(symbol_list)
+
     response_dict = {}
     saldo_dict = {}
     for symbol in symbol_list:
