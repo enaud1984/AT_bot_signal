@@ -293,9 +293,11 @@ def operation(symbol):
                 plt.grid()
                 plt.show()
     except Exception as e:
-        logging.error("Errore nella generazione dei risultati:", e)
-        sns.sendNotify("Errore nella generazione dei risultati:")
-
+        logging.error(f"Errore nella generazione dei risultati: {str(e)}")
+        try:
+            sns.sendNotify(f"Errore nella generazione dei risultati:{str(e)}")
+        except Exception as notify_error:
+            logging.error(f"Errore durante l'invio della notifica")
 
 if __name__ == "__main__":
     logging.info("START BOT")

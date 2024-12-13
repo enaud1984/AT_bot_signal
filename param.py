@@ -1,5 +1,5 @@
 single_shot = True
-COMPRO_VENDO_FLAG=True
+COMPRO_VENDO_FLAG=False
 PLOT=False
 saldo_iniziale = 5000
 date_start = "2024-11-01 00:00:00"
