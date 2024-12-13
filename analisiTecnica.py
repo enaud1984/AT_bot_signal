@@ -20,7 +20,7 @@ from param import *
 from key import *
 
 
-# Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su Kucoin)
+# Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su bitfinex)
 exchange_hist = ccxt.bitfinex({
     'apiKey': '',
     'secret': '',
@@ -217,7 +217,7 @@ def operation(symbol):
 
             # Funzione per generare segnali di acquisto e vendita alternati con stop loss e take profit
             df = generate_signals(df)
-
+            df3=df[['timestamp', 'close', 'Signal']]
             # Calcolo del risultato solo per le righe con 'SELL'
             df2 = df[df['Signal'] != "HOLD"][['timestamp', 'close', 'Signal']]
 
@@ -247,13 +247,13 @@ def operation(symbol):
             buy_signals = df[df['Signal'] == 'BUY']
 
             sell_signals = df[df['Signal'] == 'SELL']
-            oggi = pd.Timestamp.today() - pd.Timedelta(minutes=5)
-            #oggi = pd.Timestamp.today() - pd.Timedelta(hours=15)
+            #oggi = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(minutes=15)
+            oggi = pd.Timestamp.utcnow().tz_localize(None).replace(minute=0, second=0, microsecond=0)
             print("Symbol:",symbol)
             print("Oggi:",oggi)
-            df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
+            df_filtrato_buy = buy_signals[buy_signals['timestamp'] == oggi][['timestamp', 'open', 'close', 'Signal']]
             df_filtrato_buy=df_filtrato_buy.sort_values(by='timestamp', ascending=False)
-            df_filtrato_sell = sell_signals[sell_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
+            df_filtrato_sell = sell_signals[sell_signals['timestamp'] == oggi][['timestamp', 'open', 'close', 'Signal']]
             df_filtrato_sell=df_filtrato_sell.sort_values(by='timestamp', ascending=False)
             pd.options.display.max_columns=None
             print(df_filtrato_buy)
@@ -262,6 +262,7 @@ def operation(symbol):
                 logging.info(f"Nessuna operazione effettuata per Crypto {symbol}")
                 response_dict[symbol] = f"Nessuna operazione effettuata per Crypto {symbol}"
                 #sns.sendNotify(f"Nessuna operazione effettuataper Crypto {symbol}")
+            print(df3)
             print(df2)   # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
             if COMPRO_VENDO_FLAG:
                 if not df_filtrato_buy.empty:
@@ -313,7 +314,9 @@ if __name__ == "__main__":
         for symbol in symbol_list:
             operation(symbol)
         if response_dict:
+            #print(response_dict)
             sns.sendNotify(response_dict)
+
         if single_shot:
             break
         time.sleep(time_sleep)
