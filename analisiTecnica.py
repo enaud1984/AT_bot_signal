@@ -55,7 +55,7 @@ def acquista(symbol):
         #balance = exchange_operation.fetch_balance()
         #usdt_balance = balance['total']['USDT']
 
-        amount_to_spend = saldo_dict[symbol]
+        amount_to_spend = saldo_dict[symbol] * fees
 
         if amount_to_spend <= 0:
             logging.warning("Saldo insufficiente in USDT per effettuare l'acquisto.")
@@ -64,14 +64,11 @@ def acquista(symbol):
         # Ottieni il prezzo di mercato corrente per BXN/USDT
         ticker = exchange_operation.fetch_ticker(symbol)
         market_price = ticker['last']
+        max_btc_buy = amount_to_spend / market_price  # * (1 - fee_rate)
 
         logging.info(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
-                     f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}")
+                     f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_btc_buy}")
 
-        # Esegui un ordine di acquisto al mercato
-        #fee_rate = 0.01
-        max_btc_buy = amount_to_spend / market_price #* (1 - fee_rate)
-        print(f"Quantità massima di BTC acquistabile: {max_btc_buy}")
         order = exchange_operation.create_market_buy_order(symbol, max_btc_buy)
 
         logging.info("Ordine di acquisto eseguito con successo:")
@@ -80,7 +77,7 @@ def acquista(symbol):
                        f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo")
         '''
         response_dict[symbol] = f'''Saldo USDT: {amount_to_spend}, Importo da spendere: {max_btc_buy*market_price}, "
-                             Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo'''
+                             Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_btc_buy}, => Ordine di acquisto eseguito con successo'''
 
         saldo_dict[symbol] = saldo_dict[symbol] - max_btc_buy
     except Exception as e:
@@ -117,7 +114,7 @@ def vendi(symbol):
         print(order)
         #sns.sendNotify(f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:")
         response_dict[symbol] = f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:"
-        saldo_dict[symbol] = saldo_dict[symbol] + (amount_to_sell*market_price)
+        saldo_dict[symbol] = saldo_dict[symbol] + ((amount_to_sell*market_price)*fees)
 
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {str(e)}")

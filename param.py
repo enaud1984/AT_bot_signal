@@ -1,6 +1,8 @@
+
+
 single_shot = True
-COMPRO_VENDO_FLAG=True
-PLOT=False
+COMPRO_VENDO_FLAG=False
+PLOT=True
 saldo_iniziale = 5000
 date_start = "2024-11-01 00:00:00"
 
@@ -16,6 +18,7 @@ timeperiod_RSI = 14
 
 time_sleep = 21600
 symbol_list=['BTC/USDT']
+fees = 0.95
 
 LOG_FILE_PATH="log"
 
