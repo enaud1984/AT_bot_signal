@@ -16,9 +16,9 @@ import sns
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 import threading
+from db_saldo import SaldoDB
 from param import *
 from key import *
-
 
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su bitfinex)
 exchange_hist = ccxt.bitfinex({
@@ -38,12 +38,13 @@ if not os.path.exists("log"):
 
 logging.basicConfig(
     filename=f'{LOG_FILE_PATH}/logfile.log',  # Nome del file di log
-    level=logging.INFO,      # Livello del log
+    level=logging.INFO,  # Livello del log
     format='%(asctime)s - %(levelname)s - %(message)s',  # Formato del log
     datefmt='%Y-%m-%d %H:%M:%S'  # Formato del timestamp
 )
 
 app = FastAPI()
+
 
 # Funzione per acquistare
 def acquista(symbol):
@@ -55,7 +56,8 @@ def acquista(symbol):
         #balance = exchange_operation.fetch_balance()
         #usdt_balance = balance['total']['USDT']
 
-        amount_to_spend = saldo_dict[symbol] * fees
+        saldo_corrente = saldo_db.get_saldo(symbol)
+        amount_to_spend = saldo_corrente * fees
 
         if amount_to_spend <= 0:
             logging.warning("Saldo insufficiente in USDT per effettuare l'acquisto.")
@@ -64,29 +66,33 @@ def acquista(symbol):
         # Ottieni il prezzo di mercato corrente per BXN/USDT
         ticker = exchange_operation.fetch_ticker(symbol)
         market_price = ticker['last']
-        max_btc_buy = amount_to_spend / market_price  # * (1 - fee_rate)
+        max_crypto_buy = amount_to_spend / market_price
 
         logging.info(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
-                     f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_btc_buy}")
+                     f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_crypto_buy}")
 
-        order = exchange_operation.create_market_buy_order(symbol, max_btc_buy)
+        order = exchange_operation.create_market_buy_order(symbol, max_crypto_buy)
 
         logging.info("Ordine di acquisto eseguito con successo:")
         print(order)
-        '''sns.sendNotify(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
-                       f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {amount_to_spend}, => Ordine di acquisto eseguito con successo")
-        '''
-        response_dict[symbol] = f'''Saldo USDT: {amount_to_spend}, Importo da spendere: {max_btc_buy*market_price}, "
-                             Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_btc_buy}, => Ordine di acquisto eseguito con successo'''
 
-        saldo_dict[symbol] = saldo_dict[symbol] - max_btc_buy
+        # Aggiorna il saldo nel database
+        nuovo_saldo = saldo_corrente - amount_to_spend
+        saldo_db.set_saldo(symbol, nuovo_saldo)
+
+        response_dict[symbol] = f'''Saldo USDT: {saldo_corrente}, Importo da spendere: {amount_to_spend}, 
+                                Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_crypto_buy}, 
+                                => Ordine di acquisto eseguito con successo
+                                Nuovo saldo: {nuovo_saldo}
+                                '''
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {e}")
+        response_dict[symbol] = f"Errore durante l'esecuzione dell'ordine: {e}"
 
 # Funzione per vendere
 def vendi(symbol):
     try:
-        symbol_to_sell=symbol.split('/')[0]
+        symbol_to_sell = symbol.split('/')[0]
         # Carica i mercati dell'exchange
         exchange_operation.load_markets()
 
@@ -95,7 +101,7 @@ def vendi(symbol):
         balance_to_sell = balance['total'][symbol_to_sell]
 
         # Se serve aggiungi (balance_to_sell * x) dove x è un numero da 0 ad 1 per vendere solo una parte del saldo
-        amount_to_sell = balance_to_sell # Vendere tutti i BTC disponibili
+        amount_to_sell = balance_to_sell  # Vendere tutti i BTC disponibili
 
         if amount_to_sell <= 0:
             logging.warning("Saldo insufficiente per effettuare la vendita.")
@@ -105,19 +111,26 @@ def vendi(symbol):
         ticker = exchange_operation.fetch_ticker(symbol)
         market_price = ticker['last']
 
-        logging.info(f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}")
-
         # Esegui un ordine di vendita al mercato
         order = exchange_operation.create_market_buy_order(symbol, amount_to_sell)
 
         logging.info("Ordine di vendita eseguito con successo:")
         print(order)
-        #sns.sendNotify(f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:")
-        response_dict[symbol] = f"Saldo {symbol_to_sell}: {balance_to_sell}, Importo da vendere: {amount_to_sell}, Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:"
-        saldo_dict[symbol] = saldo_dict[symbol] + ((amount_to_sell*market_price)*fees)
+
+        # Aggiorna il saldo nel database
+        saldo_corrente = saldo_db.get_saldo(symbol)
+        nuovo_saldo = saldo_corrente + ((amount_to_sell * market_price) * fees)
+        saldo_db.set_saldo(symbol, nuovo_saldo)
+
+        response_dict[symbol] = f"""Saldo {symbol_to_sell}: {balance_to_sell}, 
+                                    Importo da vendere: {amount_to_sell}, 
+                                    Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:
+                                    Nuovo saldo: {nuovo_saldo}
+                                 """
 
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {str(e)}")
+        response_dict[symbol] = f"Errore durante l'esecuzione dell'ordine: {e}"
 
 def generate_signals(df):
     signals = []
@@ -126,9 +139,11 @@ def generate_signals(df):
     for i in range(1, len(df)):
         # Segnale di acquisto
         if position == 'OUT':
-            if (df['SMA_50'].iloc[i] > df['SMA_200'].iloc[i] and df['SMA_50'].iloc[i - 1] <= df['SMA_200'].iloc[i - 1]) or \
+            if (df['SMA_50'].iloc[i] > df['SMA_200'].iloc[i] and df['SMA_50'].iloc[i - 1] <= df['SMA_200'].iloc[
+                i - 1]) or \
                     (df['RSI'].iloc[i] < 30) or \
-                    (df['MACD'].iloc[i] > df['MACD_signal'].iloc[i] and df['MACD'].iloc[i - 1] <= df['MACD_signal'].iloc[i - 1]):
+                    (df['MACD'].iloc[i] > df['MACD_signal'].iloc[i] and df['MACD'].iloc[i - 1] <=
+                     df['MACD_signal'].iloc[i - 1]):
                 signals.append('BUY')
                 position = 'LONG'  # Cambia lo stato in LONG dopo un acquisto
             else:
@@ -136,9 +151,11 @@ def generate_signals(df):
 
         # Segnale di vendita
         elif position == 'LONG':
-            if (df['SMA_50'].iloc[i] < df['SMA_200'].iloc[i] and df['SMA_50'].iloc[i - 1] >= df['SMA_200'].iloc[i - 1]) or \
+            if (df['SMA_50'].iloc[i] < df['SMA_200'].iloc[i] and df['SMA_50'].iloc[i - 1] >= df['SMA_200'].iloc[
+                i - 1]) or \
                     (df['RSI'].iloc[i] > 70) or \
-                    (df['MACD'].iloc[i] < df['MACD_signal'].iloc[i] and df['MACD'].iloc[i - 1] >= df['MACD_signal'].iloc[i - 1]):
+                    (df['MACD'].iloc[i] < df['MACD_signal'].iloc[i] and df['MACD'].iloc[i - 1] >=
+                     df['MACD_signal'].iloc[i - 1]):
                 signals.append('SELL')
                 position = 'OUT'  # Cambia lo stato in OUT dopo una vendita
             else:
@@ -153,12 +170,14 @@ def generate_signals(df):
     df['Signal'] = signals
     return df
 
+
 def convertToLocalTime(df):
     # Converti la colonna timestamp in datetime e assegna il fuso orario UTC
     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
     # Converti in fuso orario Europe/Rome
     df['timestamp'] = df['timestamp'].dt.tz_convert('Europe/Rome').dt.tz_localize(None)
     return df
+
 
 @app.get("/")
 async def read_root():
@@ -181,6 +200,7 @@ def start_fastapi_server():
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
+
 def operation(symbol):
     df = None
     try:
@@ -198,13 +218,13 @@ def operation(symbol):
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
             # Calcola gli indicatori
-            if len(df) >=50:
+            if len(df) >= 50:
                 df['SMA_50'] = df.ta.sma(length=timeperiod_SMA50)
             else:
                 logging.error("Df non sufficientemente grande per SMA_50")
                 raise Exception("Df non sufficientemente grande per SMA_50")
 
-            if len(df) >=200:
+            if len(df) >= 200:
                 df['SMA_200'] = df.ta.sma(length=timeperiod_SMA200)
             else:
                 logging.error("Df non sufficientemente grande per SMA_200")
@@ -217,7 +237,7 @@ def operation(symbol):
 
             # Funzione per generare segnali di acquisto e vendita alternati con stop loss e take profit
             df = generate_signals(df)
-            df3=df[['timestamp', 'close', 'Signal']]
+            df3 = df[['timestamp', 'close', 'Signal']]
             # Calcolo del risultato solo per le righe con 'SELL'
             df2 = df[df['Signal'] != "HOLD"][['timestamp', 'close', 'Signal']]
 
@@ -249,13 +269,13 @@ def operation(symbol):
             sell_signals = df[df['Signal'] == 'SELL']
             #oggi = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(minutes=15)
             oggi = pd.Timestamp.utcnow().tz_localize(None).replace(minute=0, second=0, microsecond=0)
-            print("Symbol:",symbol)
-            print("Oggi:",oggi)
+            print("Symbol:", symbol)
+            print("Oggi:", oggi)
             df_filtrato_buy = buy_signals[buy_signals['timestamp'] == oggi][['timestamp', 'open', 'close', 'Signal']]
-            df_filtrato_buy=df_filtrato_buy.sort_values(by='timestamp', ascending=False)
+            df_filtrato_buy = df_filtrato_buy.sort_values(by='timestamp', ascending=False)
             df_filtrato_sell = sell_signals[sell_signals['timestamp'] == oggi][['timestamp', 'open', 'close', 'Signal']]
-            df_filtrato_sell=df_filtrato_sell.sort_values(by='timestamp', ascending=False)
-            pd.options.display.max_columns=None
+            df_filtrato_sell = df_filtrato_sell.sort_values(by='timestamp', ascending=False)
+            pd.options.display.max_columns = None
             print(df_filtrato_buy)
             print(df_filtrato_sell)
             if df_filtrato_buy.empty and df_filtrato_sell.empty:
@@ -263,7 +283,7 @@ def operation(symbol):
                 response_dict[symbol] = f"Nessuna operazione effettuata per Crypto {symbol}"
                 #sns.sendNotify(f"Nessuna operazione effettuataper Crypto {symbol}")
             print(df3)
-            print(df2)   # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
+            print(df2)  # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
             if COMPRO_VENDO_FLAG:
                 if not df_filtrato_buy.empty:
                     acquista(symbol)
@@ -301,16 +321,24 @@ def operation(symbol):
 
 if __name__ == "__main__":
     logging.info("START BOT")
-    date_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logging.info(f"DateTimestamp: {date_time}")
     if not single_shot:
         threading.Thread(target=start_fastapi_server, daemon=True).start()
 
-    saldo = exchange_operation.fetch_balance()['total']['USDT']/len(symbol_list)
     response_dict = {}
-    saldo_dict = {}
-    for symbol in symbol_list:
-        saldo_dict[symbol] = saldo
+
+    try:
+        saldo_db = SaldoDB(db_name)
+        # Inizializza la tabella saldo
+        saldo_db.initialize_saldo(symbol_list, exchange_operation.fetch_balance()['total']['USDT'])
+    except Exception as e:
+        logging.error(f"Errore durante l'inizializzazione della tabella saldo: {str(e)}")
+        try:
+            sns.sendNotify(f"Errore durante l'inizializzazione della tabella saldo: {str(e)}")
+        except Exception as notify_error:
+            logging.error(f"Errore durante l'invio della notifica")
+            raise e
 
     while True:
         for symbol in symbol_list:
@@ -318,7 +346,6 @@ if __name__ == "__main__":
         if response_dict:
             #print(response_dict)
             sns.sendNotify(response_dict)
-
         if single_shot:
             break
         time.sleep(time_sleep)
