@@ -2,7 +2,7 @@ single_shot = True
 COMPRO_VENDO_FLAG=False
 PLOT=False
 saldo_iniziale = 5000
-date_start = "2024-11-01 00:00:00"
+date_start = "2024-11-01 01:00:00" #in locale mettere un ora avanti rispetto ad utc desiderato
 
 hist_timeframe = '1h'
 hist_limit = 1500
@@ -20,3 +20,4 @@ fees = 0.95
 
 LOG_FILE_PATH="log"
 
+db_name = "db_atbot.db"
