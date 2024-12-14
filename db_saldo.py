@@ -33,5 +33,5 @@ class SaldoDB:
 
     def set_saldo(self, symbol, nuovo_saldo):
         with sqlite3.connect(self.db_name) as conn:
-            cursor =conn.cursor()
+             cursor =conn.cursor()
              cursor.execute("UPDATE saldo SET amount = ? WHERE symbol = ?", (nuovo_saldo, symbol))
