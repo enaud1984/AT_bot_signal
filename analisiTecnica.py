@@ -85,6 +85,7 @@ def acquista(symbol):
                                 => Ordine di acquisto eseguito con successo
                                 Nuovo saldo: {nuovo_saldo}
                                 '''
+        print("Nuovo saldo",nuovo_saldo)
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {e}")
         response_dict[symbol] = f"Errore durante l'esecuzione dell'ordine: {e}"
@@ -127,7 +128,7 @@ def vendi(symbol):
                                     Prezzo di mercato: {market_price}, =>Ordine di vendita eseguito con successo:
                                     Nuovo saldo: {nuovo_saldo}
                                  """
-
+        print("Nuovo saldo",nuovo_saldo)
     except Exception as e:
         logging.error(f"Errore durante l'esecuzione dell'ordine: {str(e)}")
         response_dict[symbol] = f"Errore durante l'esecuzione dell'ordine: {e}"
@@ -201,7 +202,7 @@ def start_fastapi_server():
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-def operation(symbol):
+def operation(symbol,saldo_symbol):
     df = None
     try:
         since_datetime = datetime.strptime(date_start, "%Y-%m-%d %H:%M:%S")
@@ -271,6 +272,7 @@ def operation(symbol):
             oggi = pd.Timestamp.utcnow().tz_localize(None).replace(minute=0, second=0, microsecond=0)
             print("Symbol:", symbol)
             print("Oggi:", oggi)
+            print("Saldo:",saldo_symbol)
             df_filtrato_buy = buy_signals[buy_signals['timestamp'] == oggi][['timestamp', 'open', 'close', 'Signal']]
             df_filtrato_buy = df_filtrato_buy.sort_values(by='timestamp', ascending=False)
             df_filtrato_sell = sell_signals[sell_signals['timestamp'] == oggi][['timestamp', 'open', 'close', 'Signal']]
@@ -327,6 +329,7 @@ if __name__ == "__main__":
         threading.Thread(target=start_fastapi_server, daemon=True).start()
 
     response_dict = {}
+    saldo_db=None
 
     try:
         saldo_db = SaldoDB(db_name)
@@ -342,7 +345,9 @@ if __name__ == "__main__":
 
     while True:
         for symbol in symbol_list:
-            operation(symbol)
+            if saldo_db:
+                saldo_symbol=saldo_db.get_saldo(symbol)
+                operation(symbol,saldo_symbol)
         if response_dict:
             #print(response_dict)
             sns.sendNotify(response_dict)
