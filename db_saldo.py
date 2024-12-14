@@ -26,7 +26,7 @@ class SaldoDB:
 
     def get_saldo(self, symbol):
         with sqlite3.connect(self.db_name) as conn:
-            cursor = conn.cursor() as cursor:
+            cursor = conn.cursor()
             cursor.execute("SELECT amount FROM saldo WHERE symbol = ?", (symbol,))
             result = cursor.fetchone()
         return result[0] if result else 0
