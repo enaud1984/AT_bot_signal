@@ -66,12 +66,12 @@ def acquista(symbol):
         # Ottieni il prezzo di mercato corrente per BXN/USDT
         ticker = exchange_operation.fetch_ticker(symbol)
         market_price = ticker['last']
-        max_crypto_buy = amount_to_spend / market_price
+        max_cripto_buy = amount_to_spend / market_price
 
         logging.info(f"Saldo USDT: {amount_to_spend}, Importo da spendere: {amount_to_spend}, "
-                     f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_crypto_buy}")
+                     f"Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_cripto_buy}")
 
-        order = exchange_operation.create_market_buy_order(symbol, max_crypto_buy)
+        order = exchange_operation.create_market_buy_order(symbol, max_cripto_buy)
 
         logging.info("Ordine di acquisto eseguito con successo:")
         print(order)
@@ -81,7 +81,7 @@ def acquista(symbol):
         saldo_db.set_saldo(symbol, nuovo_saldo)
 
         response_dict[symbol] = f'''Saldo USDT: {saldo_corrente}, Importo da spendere: {amount_to_spend}, 
-                                Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_crypto_buy}, 
+                                Prezzo di mercato: {market_price}, Importo {symbol} da acquistare: {max_cripto_buy}, 
                                 => Ordine di acquisto eseguito con successo
                                 Nuovo saldo: {nuovo_saldo}
                                 '''
@@ -269,15 +269,15 @@ def operation(symbol,saldo_symbol):
 
             sell_signals = df[df['Signal'] == 'SELL']
 
-            """
+
             new_row = {
-                'timestamp': pd.Timestamp("2024-12-15 19:00"),
+                'timestamp': pd.Timestamp("2024-12-15 20:00"),
                 'open': 1,
                 'close': 1,
-                'Signal': 'SELL'
+                'Signal': 'BUY'
             }
-            sell_signals = pd.concat([sell_signals, pd.DataFrame([new_row])], ignore_index=True)
-            """
+            buy_signals = pd.concat([buy_signals, pd.DataFrame([new_row])], ignore_index=True)
+
 
             #oggi = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(minutes=15)
             oggi = pd.Timestamp.utcnow().tz_localize(None).replace(minute=0, second=0, microsecond=0)
@@ -292,9 +292,9 @@ def operation(symbol,saldo_symbol):
             print(df_filtrato_buy)
             print(df_filtrato_sell)
             if df_filtrato_buy.empty and df_filtrato_sell.empty:
-                logging.info(f"Nessuna operazione effettuata per Crypto {symbol}")
-                response_dict[symbol] = f"Nessuna operazione effettuata per Crypto {symbol}"
-                #sns.sendNotify(f"Nessuna operazione effettuataper Crypto {symbol}")
+                logging.info(f"Nessuna operazione effettuata per cripto {symbol}")
+                response_dict[symbol] = f"Nessuna operazione effettuata per cripto {symbol}"
+                #sns.sendNotify(f"Nessuna operazione effettuataper cripto {symbol}")
             print(df3)
             print(df2)  # stampa tutta la tabella con i valori BUY and SELL con saldo progressivo
             if COMPRO_VENDO_FLAG:
