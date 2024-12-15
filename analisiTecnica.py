@@ -97,23 +97,23 @@ def vendi(symbol):
         # Carica i mercati dell'exchange
         exchange_operation.load_markets()
 
-        # Ottieni il saldo corrente della crypto
+        # Ottieni il saldo corrente della cripto
         balance = exchange_operation.fetch_balance()
         balance_to_sell = balance['total'][symbol_to_sell]
 
         # Se serve aggiungi (balance_to_sell * x) dove x è un numero da 0 ad 1 per vendere solo una parte del saldo
-        amount_to_sell = balance_to_sell  # Vendere tutti i BTC disponibili
+        amount_to_sell = balance_to_sell  # Vendere tutti le cripto disponibili
 
         if amount_to_sell <= 0:
             logging.warning("Saldo insufficiente per effettuare la vendita.")
             return
 
-        # Ottieni il prezzo di mercato corrente per BXN/USDT
+        # Ottieni il prezzo di mercato corrente per cripto/USDT
         ticker = exchange_operation.fetch_ticker(symbol)
         market_price = ticker['last']
 
         # Esegui un ordine di vendita al mercato
-        order = exchange_operation.create_market_buy_order(symbol, amount_to_sell)
+        order = exchange_operation.create_market_sell_order(symbol, amount_to_sell)
 
         logging.info("Ordine di vendita eseguito con successo:")
         print(order)
@@ -268,6 +268,17 @@ def operation(symbol,saldo_symbol):
             buy_signals = df[df['Signal'] == 'BUY']
 
             sell_signals = df[df['Signal'] == 'SELL']
+
+            """
+            new_row = {
+                'timestamp': pd.Timestamp("2024-12-15 19:00"),
+                'open': 1,
+                'close': 1,
+                'Signal': 'SELL'
+            }
+            sell_signals = pd.concat([sell_signals, pd.DataFrame([new_row])], ignore_index=True)
+            """
+
             #oggi = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(minutes=15)
             oggi = pd.Timestamp.utcnow().tz_localize(None).replace(minute=0, second=0, microsecond=0)
             print("Symbol:", symbol)
@@ -334,7 +345,8 @@ if __name__ == "__main__":
     try:
         saldo_db = SaldoDB(db_name)
         # Inizializza la tabella saldo
-        saldo_db.initialize_saldo(symbol_list, exchange_operation.fetch_balance()['total']['USDT'])
+        saldo_totale = exchange_operation.fetch_balance()['total']['USDT']
+        saldo_db.initialize_saldo(symbol_list, saldo_totale)
     except Exception as e:
         logging.error(f"Errore durante l'inizializzazione della tabella saldo: {str(e)}")
         try:
