@@ -35,3 +35,30 @@ class SaldoDB:
         with sqlite3.connect(self.db_name) as conn:
              cursor =conn.cursor()
              cursor.execute("UPDATE saldo SET amount = ? WHERE symbol = ?", (nuovo_saldo, symbol))
+
+    def get_total_saldo(self):
+        """Ritorna la somma totale dei saldi nel database."""
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT SUM(amount) FROM saldo")
+            result = cursor.fetchone()
+        return result[0] if result[0] else 0
+
+    def adjust_saldo_to_total(self, total_usdt):
+        """Distribuisce la differenza tra il totale calcolato e il totale sull'exchange."""
+        current_total = self.get_total_saldo()
+        if current_total>0:
+            difference = total_usdt - current_total
+            if difference > 0:  # Distribuisci solo se ci sono fondi aggiuntivi
+                with sqlite3.connect(self.db_name) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT symbol, amount FROM saldo")
+                    rows = cursor.fetchall()
+
+                    if rows:
+                        symbols = len(rows)
+                        incremento = difference / symbols
+
+                        for symbol, amount in rows:
+                            new_amount = amount + incremento
+                            cursor.execute("UPDATE saldo SET amount = ? WHERE symbol = ?", (new_amount, symbol))

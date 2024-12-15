@@ -347,6 +347,9 @@ if __name__ == "__main__":
         # Inizializza la tabella saldo
         saldo_totale = exchange_operation.fetch_balance()['total']['USDT']
         saldo_db.initialize_saldo(symbol_list, saldo_totale)
+        saldo_db.adjust_saldo_to_total(saldo_totale)
+        logging.info(f"Tabella saldo inizializzata o aggiornata, saldo_totale:{saldo_totale}")
+
     except Exception as e:
         logging.error(f"Errore durante l'inizializzazione della tabella saldo: {str(e)}")
         try:
