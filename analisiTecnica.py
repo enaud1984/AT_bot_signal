@@ -241,7 +241,7 @@ def operation(symbol,saldo_symbol):
             save_and_compare_history(df)
 
     except Exception as e:
-        logging.error("Errore nel recupero dei dati:", e)
+        logging.error(f"Errore nel recupero dei dati:{e}")
         bars = []  # Lasciamo vuoto se c'è un errore di connessione
 
     try:
