@@ -39,6 +39,8 @@ class SaldoDB:
              cursor =conn.cursor()
              cursor.execute("UPDATE saldo SET amount = ? WHERE symbol = ?", (nuovo_saldo, symbol))
              conn.commit()
+        print("Nuovo saldo da DB:", self.get_saldo(symbol))
+
 
     def get_total_saldo(self):
         """Ritorna la somma totale dei saldi nel database."""

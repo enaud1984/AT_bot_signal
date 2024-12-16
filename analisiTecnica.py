@@ -269,7 +269,7 @@ def operation(symbol,saldo_symbol):
 
             sell_signals = df[df['Signal'] == 'SELL']
 
-
+            """
             new_row = {
                 'timestamp': pd.Timestamp("2024-12-15 20:00"),
                 'open': 1,
@@ -277,7 +277,7 @@ def operation(symbol,saldo_symbol):
                 'Signal': 'BUY'
             }
             buy_signals = pd.concat([buy_signals, pd.DataFrame([new_row])], ignore_index=True)
-
+            """
 
             #oggi = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(minutes=15)
             oggi = pd.Timestamp.utcnow().tz_localize(None).replace(minute=0, second=0, microsecond=0)
