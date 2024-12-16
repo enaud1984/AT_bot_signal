@@ -207,9 +207,9 @@ def start_fastapi_server():
 
 def save_and_compare_history(df):
     now = datetime.now().strftime('%Y%m%d_%H%M')
-    df.to_csv(f'history_{now}.csv', index=False)
+    df.to_csv(f'csv/history_{now}.csv', index=False)
 
-    csv_files = sorted(glob.glob('history_*.csv'))
+    csv_files = sorted(glob.glob('csv/history_*.csv'))
 
     # Confronta con il file precedente, se esiste
     if len(csv_files) > 1:
