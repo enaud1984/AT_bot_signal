@@ -138,6 +138,9 @@ def generate_signals(df):
     position = 'OUT'  # Stato iniziale, senza posizione aperta
 
     for i in range(1, len(df)):
+        if pd.isna(df['SMA_50'].iloc[i]) or pd.isna(df['SMA_200'].iloc[i]) or pd.isna(df['RSI'].iloc[i]):
+            signals.append('HOLD')
+            continue
         # Segnale di acquisto
         if position == 'OUT':
             if (df['SMA_50'].iloc[i] > df['SMA_200'].iloc[i] and df['SMA_50'].iloc[i - 1] <= df['SMA_200'].iloc[
