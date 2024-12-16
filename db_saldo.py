@@ -14,6 +14,8 @@ class SaldoDB:
                     )
                     """)
 
+            conn.commit()
+
     def initialize_saldo(self, symbol_list, saldo_totale):
         for symbol in symbol_list:
             with sqlite3.connect(self.db_name) as conn:
@@ -23,6 +25,7 @@ class SaldoDB:
                 if result is None:  # Se il simbolo non è nella tabella, lo inizializza
                     saldo_iniziale = saldo_totale / len(symbol_list)
                     cursor.execute("INSERT INTO saldo (symbol, amount) VALUES (?, ?)", (symbol, saldo_iniziale))
+                    conn.commit()
 
     def get_saldo(self, symbol):
         with sqlite3.connect(self.db_name) as conn:
@@ -35,6 +38,7 @@ class SaldoDB:
         with sqlite3.connect(self.db_name) as conn:
              cursor =conn.cursor()
              cursor.execute("UPDATE saldo SET amount = ? WHERE symbol = ?", (nuovo_saldo, symbol))
+             conn.commit()
 
     def get_total_saldo(self):
         """Ritorna la somma totale dei saldi nel database."""
@@ -62,3 +66,4 @@ class SaldoDB:
                         for symbol, amount in rows:
                             new_amount = amount + incremento
                             cursor.execute("UPDATE saldo SET amount = ? WHERE symbol = ?", (new_amount, symbol))
+                            conn.commit()
