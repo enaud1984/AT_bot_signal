@@ -1,3 +1,4 @@
+import glob
 import logging
 import shutil
 from datetime import datetime
@@ -204,6 +205,28 @@ def start_fastapi_server():
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
+def save_and_compare_history(df):
+    now = datetime.now().strftime('%Y%m%d_%H%M')
+    df.to_csv(f'history_{now}.csv', index=False)
+
+    csv_files = sorted(glob.glob('history_*.csv'))
+
+    # Confronta con il file precedente, se esiste
+    if len(csv_files) > 1:
+        file_precedente = csv_files[-2]
+
+        previous_df = pd.read_csv(file_precedente)
+
+        # Confronta i due DataFrame
+        if df.equals(previous_df):
+            print("Nessuna differenza tra i file csv attuale e precedente")
+        else:
+            # Mostra differenze riga per riga
+            differenze = df.compare(previous_df, align_axis=0)
+            print("Differenze trovate:",differenze)
+    else:
+        print("Non ci sono file CSV precedenti da confrontare.")
+
 
 def operation(symbol,saldo_symbol):
     df = None
@@ -213,6 +236,10 @@ def operation(symbol,saldo_symbol):
         since = int(since_datetime.timestamp() * 1000)
         bars = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, since=since, limit=hist_limit)
         df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+
+        if SAVE_CSV_HIST:
+            save_and_compare_history(df)
+
     except Exception as e:
         logging.error("Errore nel recupero dei dati:", e)
         bars = []  # Lasciamo vuoto se c'è un errore di connessione
@@ -350,7 +377,8 @@ if __name__ == "__main__":
         # Inizializza la tabella saldo
         saldo_totale = exchange_operation.fetch_balance()['total']['USDT']
         saldo_db.initialize_saldo(symbol_list, saldo_totale)
-        saldo_db.adjust_saldo_to_total(saldo_totale)
+        if False:
+            saldo_db.adjust_saldo_to_total(saldo_totale)
         logging.info(f"Tabella saldo inizializzata o aggiornata, saldo_totale:{saldo_totale}")
 
     except Exception as e:
