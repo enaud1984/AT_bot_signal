@@ -205,24 +205,24 @@ def start_fastapi_server():
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-def save_and_compare_history(df):
+def save_and_compare_history(df,cripto):
     now = datetime.now().strftime('%Y%m%d_%H%M')
-    df.to_csv(f'csv/history_{now}.csv', index=False)
+    df.to_csv(f'csv/history_{cripto}_{now}.csv', index=False)
 
-    csv_files = sorted(glob.glob('csv/history_*.csv'))
+    csv_files = sorted(glob.glob(f'csv/history_{cripto}_*.csv'))
 
     # Confronta con il file precedente, se esiste
     if len(csv_files) > 1:
         file_precedente = csv_files[-2]
-
         previous_df = pd.read_csv(file_precedente)
-
+        df_reset = df.reset_index(drop=True)
+        previous_df_reset = previous_df.reset_index(drop=True)
         # Confronta i due DataFrame
-        if df.equals(previous_df):
+        if df_reset.equals(previous_df_reset):
             print("Nessuna differenza tra i file csv attuale e precedente")
         else:
             # Mostra differenze riga per riga
-            differenze = df.compare(previous_df, align_axis=0)
+            differenze = df_reset.compare(previous_df_reset, align_axis=0)
             print("Differenze trovate:",differenze)
     else:
         print("Non ci sono file CSV precedenti da confrontare.")
