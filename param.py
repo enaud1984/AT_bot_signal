@@ -18,7 +18,7 @@ config={"single_shot" : True,
         "fees":0.95,
         "db_name":"db_atbot.db",
         "tabella_storico_consolidato":"storico_consolidato_{}",
-        "peso_close":0.004
+        "peso_close": 0.0005
         }
 
 LOG_FILE_PATH="log"
