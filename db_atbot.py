@@ -1,7 +1,7 @@
 import sqlite3
 
 
-class SaldoDB:
+class DB_ATBot:
     def __init__(self, db_name):
         self.db_name=db_name
         # Connessione al database
@@ -67,3 +67,44 @@ class SaldoDB:
                             new_amount = amount + incremento
                             cursor.execute("UPDATE saldo SET amount = ? WHERE symbol = ?", (new_amount, symbol))
                             conn.commit()
+
+    def tabella_esiste(self, nome_tabella):
+        """Controlla se la tabella esiste nel database."""
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (nome_tabella,))
+            result = bool(cursor.fetchone())
+        return result
+
+    def get_tabella(self, nome_tabella):
+        """Ritorna il contenuto della tabella."""
+        if self.tabella_esiste(nome_tabella):
+            with sqlite3.connect(self.db_name) as conn:
+                cursor = conn.cursor()
+                cursor.execute(f"SELECT * FROM {nome_tabella}")
+                rows = cursor.fetchall()
+            return rows
+        else:
+            return None
+
+    def salva_df(self, df, nome_tabella):
+        conn=None
+        try:
+            conn=sqlite3.connect(self.db_name)
+            """Salva un DataFrame nella tabella."""
+            if self.tabella_esiste(nome_tabella):
+                ultima_riga=df.iloc[[-1]]
+                import pandas as pd
+                ultima_riga['timestamp'] = pd.to_datetime(ultima_riga['timestamp'], errors='coerce')
+                ultima_riga['timestamp'] = ultima_riga['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+                ultima_riga.to_sql(nome_tabella, con=conn, if_exists='append', index=False)
+                print(f"Aggiunta riga {ultima_riga} a {nome_tabella}")
+            else:
+                df.to_sql(nome_tabella, con=conn, index=False)
+                print(f"Tabella creata:{nome_tabella}")
+        except Exception as e:
+            print(f"Error insert/create row/table",e)
+            raise e
+        finally:
+            if conn:
+                conn.close()
