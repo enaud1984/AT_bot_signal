@@ -94,6 +94,7 @@ class DB_ATBot:
             """Salva un DataFrame nella tabella."""
             if self.tabella_esiste(nome_tabella):
                 ultima_riga=df.iloc[[-1]]
+                ultima_riga = ultima_riga.copy()
                 import pandas as pd
                 ultima_riga['timestamp'] = pd.to_datetime(ultima_riga['timestamp'], errors='coerce')
                 ultima_riga['timestamp'] = ultima_riga['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
