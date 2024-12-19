@@ -228,9 +228,9 @@ class AT_Bot:
         df['timestamp'] = df['timestamp'].dt.tz_convert('Europe/Rome').dt.tz_localize(None)
         return df
 
-
+    @staticmethod
     @app.get("/")
-    async def read_root(self):
+    async def read_root():
         try:
             temp_log_path = f'{LOG_FILE_PATH}/temp_logfile.log'
             shutil.copyfile(f'{LOG_FILE_PATH}/logfile.log', temp_log_path)
