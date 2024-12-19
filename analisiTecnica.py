@@ -2,14 +2,13 @@ import glob
 import json
 import logging
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 #import talib
 import pandas_ta as talib
 import numpy as np
 import pandas as pd
-import ccxt
 import matplotlib.pyplot as plt
 import time
 import os
@@ -18,18 +17,21 @@ import sns
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 import threading
+
+from MiaBitfinex import MiaBitfinex
 from db_atbot import DB_ATBot
 from param import *
 from key import *
 
+
 # Imposta l'exchange e ottieni i dati OHLCV per un asset (es: BTC/USDT su bitfinex)
-exchange_hist = ccxt.bitfinex({
+exchange_hist = MiaBitfinex({
     'apiKey': '',
     'secret': '',
     'enableRateLimit': True,
 })
 
-exchange_operation = ccxt.bitfinex({
+exchange_operation = MiaBitfinex({
     'apiKey': API_KEY_bitfinex,
     'secret': SECRET_KEY_bitfinex,
     'enableRateLimit': True,
@@ -255,42 +257,29 @@ class AT_Bot:
         try:
             df = None
             if not self.db_atbot.tabella_esiste(nome_tabella):
-                bars = exchange_hist.fetch_ohlcv(symbol, timeframe=self.hist_timeframe, since=since, limit=self.hist_limit)
+                bars = exchange_hist.fetch_ohlcv(symbol, timeframe=self.hist_timeframe, limit=None, since=since)#, limit=self.hist_limit)
                 df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                 df = df.sort_values(by='timestamp', ascending=True)
-                df = df[:-1] #escludo l'ultima linea
+                df = df[df['timestamp'].dt.minute == 10]
             else:
                 rows = self.db_atbot.get_tabella(nome_tabella)
                 if rows:
                     df = pd.DataFrame(rows, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
                     df = df.sort_values(by='timestamp', ascending=True)
 
-            #configurazioni per ottenere i dati degli ultimi 5 minuti con ROC
-            hist_timeframe= '1m'
-            hist_limit = 6
-
-            since_oggi=int(oggi.timestamp() * 1000)
-            bars_last = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, since=since_oggi, limit=hist_limit)
-            df_last = pd.DataFrame(bars_last, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df_last['timestamp'] = pd.to_datetime(df_last['timestamp'], unit='ms')
-            df_last['ROC'] = df_last['close'].pct_change(periods=5)
-            ultima_riga_last = df_last.iloc[-1]
-            roc_last=ultima_riga_last['ROC']
-            close_last_roc=ultima_riga_last['close'] * (1- roc_last) * (1-self.peso_close)
-
-            nuova_riga = {
-                'timestamp': oggi,
-                'open': ultima_riga_last['open'],
-                'high': ultima_riga_last['high'],
-                'low': ultima_riga_last['low'],
-                'close': close_last_roc,
-                'volume': ultima_riga_last['volume']
-            }
+                #configurazioni per ottenere i dati degli ultimi 5 minuti con ROC
+                hist_timeframe= '1m'
+                hist_limit = 1
+                oggi_10 = oggi + timedelta(minutes=10)
+                since_oggi_10 = int(oggi_10.timestamp() * 1000)
+                bars_last = exchange_hist.fetch_ohlcv(symbol, timeframe=hist_timeframe, since=since_oggi_10, limit=hist_limit)
+                df_last = pd.DataFrame(bars_last, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                df_last['timestamp'] = pd.to_datetime(df_last['timestamp'], unit='ms')
 
             # Aggiunta della nuova riga al DataFrame DF
             if df is not None:
-                df = pd.concat([df, pd.DataFrame([nuova_riga])], ignore_index=True)
+                df = pd.concat([df, df_last], ignore_index=True)
 
             return df, df_last
         except Exception as e:
@@ -439,6 +428,7 @@ class AT_Bot:
         plt.legend(loc='best')
         plt.grid()
         plt.show()
+
 
 if __name__ == "__main__":
     logging.info("START BOT")
