@@ -1,4 +1,4 @@
-config={"single_shot" : False,
+config={"single_shot" : True,
         "COMPRO_VENDO_FLAG":False,
         "SAVE_CSV_HIST":False,
         "PLOT":False,

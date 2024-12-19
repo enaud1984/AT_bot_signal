@@ -256,6 +256,7 @@ class AT_Bot:
     def get_Df(self,symbol,since,oggi,nome_tabella):
         try:
             df = None
+            df_last = None
             if not self.db_atbot.tabella_esiste(nome_tabella):
                 bars = exchange_hist.fetch_ohlcv(symbol, timeframe=self.hist_timeframe, limit=None, since=since)#, limit=self.hist_limit)
                 df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
@@ -278,10 +279,10 @@ class AT_Bot:
                 df_last['timestamp'] = pd.to_datetime(df_last['timestamp'], unit='ms')
 
             # Aggiunta della nuova riga al DataFrame DF
-            if df is not None:
+            if df is not None and df_last is not None:
                 df = pd.concat([df, df_last], ignore_index=True)
 
-            return df, df_last
+            return df
         except Exception as e:
             logging.error(f"Errore durante la creazione del DataFrame, (get_Df()): {str(e)}")
             print(e)
@@ -299,7 +300,7 @@ class AT_Bot:
             df=None
             since = int(since_datetime.timestamp() * 1000)
             nome_tabella=self.tabella_storico_consolidato.format(symbol.replace('/','_'))
-            df,df_last = self.get_Df(symbol,since,oggi,nome_tabella)
+            df= self.get_Df(symbol,since,oggi,nome_tabella)
             self.db_atbot.salva_df(df,nome_tabella)
             if self.SAVE_CSV_HIST:
                 self.save_history(df,symbol.split('/')[0])
@@ -308,7 +309,7 @@ class AT_Bot:
             logging.error(f"Errore nel recupero dei dati:{e}")
 
         try:
-            if df is not None and df_last is not None:
+            if df is not None:
                 #df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                 # Calcola gli indicatori
                 if len(df) >= 50:
