@@ -181,44 +181,78 @@ class AT_Bot:
     def generate_signals(self,df):
         signals = []
         position = 'OUT'  # Stato iniziale, senza posizione aperta
+        last_buy_close = None
+        last_buy_atr = None
+        buy_diff_lose = []
+        buy_diff_profit = []
+        try:
+            for i in range(1, len(df)):
+                if pd.isna(df['SMA_50'].iloc[i]) or pd.isna(df['SMA_200'].iloc[i]) or pd.isna(df['RSI'].iloc[i]):
+                    signals.append('HOLD')
+                    buy_diff_lose.append(None)
+                    buy_diff_profit.append(None)
+                    continue
 
-        for i in range(1, len(df)):
-            if pd.isna(df['SMA_50'].iloc[i]) or pd.isna(df['SMA_200'].iloc[i]) or pd.isna(df['RSI'].iloc[i]):
-                signals.append('HOLD')
-                continue
+                # Segnale di acquisto
+                if position == 'OUT':
+                    if (df['SMA_50'].iloc[i] > df['SMA_200'].iloc[i] and df['SMA_50'].iloc[i - 1] <= df['SMA_200'].iloc[
+                        i - 1]) or \
+                            (df['RSI'].iloc[i] < 30) or \
+                            (df['MACD'].iloc[i] > df['MACD_signal'].iloc[i] and df['MACD'].iloc[i - 1] <=
+                             df['MACD_signal'].iloc[i - 1]):
+                        signals.append('BUY')
+                        position = 'LONG'  # Cambia lo stato in LONG dopo un acquisto
+                        last_buy_close = df['close'].iloc[i]
+                        last_buy_atr = df['ATR'].iloc[i]
+                        buy_diff_lose.append(last_buy_close - last_buy_atr)
+                        buy_diff_profit.append(last_buy_close + (last_buy_atr * 2))
+                    else:
+                        signals.append('HOLD')
+                        buy_diff_lose.append(None)
+                        buy_diff_profit.append(None)
 
-            # Segnale di acquisto
-            if position == 'OUT':
-                if (df['SMA_50'].iloc[i] > df['SMA_200'].iloc[i] and df['SMA_50'].iloc[i - 1] <= df['SMA_200'].iloc[
-                    i - 1]) or \
-                        (df['RSI'].iloc[i] < 30) or \
-                        (df['MACD'].iloc[i] > df['MACD_signal'].iloc[i] and df['MACD'].iloc[i - 1] <=
-                         df['MACD_signal'].iloc[i - 1]):
-                    signals.append('BUY')
-                    position = 'LONG'  # Cambia lo stato in LONG dopo un acquisto
+                # Segnale di vendita
+                elif position == 'LONG':
+                    if df['close'].iloc[i] <= buy_diff_lose[i-2] or df['close'].iloc[i] >=buy_diff_profit[i-2]:
+                        signals.append('SELL')
+                        position = 'OUT'
+                        buy_diff_lose.append(None)
+                        buy_diff_profit.append(None)
+                    else:
+                        signals.append('HOLD')
+                        buy_diff_lose.append(buy_diff_lose[i-2])
+                        buy_diff_profit.append(buy_diff_profit[i-2])
+
+
+                    """
+                    if (df['SMA_50'].iloc[i] < df['SMA_200'].iloc[i] and df['SMA_50'].iloc[i - 1] >= df['SMA_200'].iloc[
+                        i - 1]) or \
+                            (df['RSI'].iloc[i] > 70) or \
+                            (df['MACD'].iloc[i] < df['MACD_signal'].iloc[i] and df['MACD'].iloc[i - 1] >=
+                             df['MACD_signal'].iloc[i - 1]):
+                        signals.append('SELL')
+                        position = 'OUT'  # Cambia lo stato in OUT dopo una vendita
+                    """
+
+                # Nessun segnale
                 else:
                     signals.append('HOLD')
+                    buy_diff_lose.append(None)
+                    buy_diff_profit.append(None)
 
-            # Segnale di vendita
-            elif position == 'LONG':
-                if (df['SMA_50'].iloc[i] < df['SMA_200'].iloc[i] and df['SMA_50'].iloc[i - 1] >= df['SMA_200'].iloc[
-                    i - 1]) or \
-                        (df['RSI'].iloc[i] > 70) or \
-                        (df['MACD'].iloc[i] < df['MACD_signal'].iloc[i] and df['MACD'].iloc[i - 1] >=
-                         df['MACD_signal'].iloc[i - 1]):
-                    signals.append('SELL')
-                    position = 'OUT'  # Cambia lo stato in OUT dopo una vendita
-                else:
-                    signals.append('HOLD')
 
-            # Nessun segnale
-            else:
-                signals.append('HOLD')
+            # Assicura che la lunghezza dei segnali sia uguale a quella del DataFrame
+            signals = ['HOLD'] + signals
+            buy_diff_lose=[None] + buy_diff_lose
+            buy_diff_profit=[None]+buy_diff_profit
+            df['Signal'] = signals
+            df['buy_diff_lose'] = buy_diff_lose
+            df['buy_diff_profit'] = buy_diff_profit
 
-        # Assicura che la lunghezza dei segnali sia uguale a quella del DataFrame
-        signals = ['HOLD'] + signals
-        df['Signal'] = signals
-        return df
+            return df
+        except Exception as e:
+            logging.error(f"Errore durante la generazione dei segnali: {str(e)}")
+            return None
 
 
     def convertToLocalTime(self,df):
@@ -288,6 +322,23 @@ class AT_Bot:
             print(e)
             return None
 
+    def calculate_ATR(self,df):
+        try:
+            # Calcolo del True Range (TR)
+            df['Previous Close'] = df['close'].shift(1)
+            df['TR'] = df.apply(lambda row: max(row['high'] - row['low'],
+                                                abs(row['high'] - row['Previous Close']),
+                                                abs(row['low'] - row['Previous Close']) ),
+                                axis=1)
+            # Calcolo dell'ATR (usando una media mobile esponenziale su un periodo di 14 giorni)
+            period = 14
+            df['ATR'] = df['TR'].ewm(span=period, adjust=False).mean()
+            return df
+        except Exception as e:
+            logging.error(f"Errore durante il calcolo del True Range (ATR), (calculate_ATR()): {str(e)}")
+            print(e)
+            return None
+
 
     def operation(self,symbol,saldo_symbol):
         df = None
@@ -328,6 +379,9 @@ class AT_Bot:
                 df['MACD'] = macd['MACD_12_26_9']
                 df['MACD_signal'] = macd['MACDs_12_26_9']
                 df['RSI'] = df.ta.rsi(length=self.timeperiod_RSI)
+                df['Previous_Buy_Close'] = None
+                df['Previous_Buy_ATR'] = None
+                df = self.calculate_ATR(df)
 
                 # Funzione per generare segnali di acquisto e vendita alternati con stop loss e take profit
                 df = self.generate_signals(df)
