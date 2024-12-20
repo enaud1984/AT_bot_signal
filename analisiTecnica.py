@@ -430,9 +430,9 @@ class AT_Bot:
                 print("Symbol:", symbol)
                 print("Oggi:", oggi)
                 print("Saldo:",saldo_symbol)
-                df_filtrato_buy = buy_signals[buy_signals['timestamp'] == oggi][['timestamp', 'open', 'close', 'Signal']]
+                df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
                 df_filtrato_buy = df_filtrato_buy.sort_values(by='timestamp', ascending=False)
-                df_filtrato_sell = sell_signals[sell_signals['timestamp'] == oggi][['timestamp', 'open', 'close', 'Signal']]
+                df_filtrato_sell = sell_signals[sell_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
                 df_filtrato_sell = df_filtrato_sell.sort_values(by='timestamp', ascending=False)
                 pd.options.display.max_columns = None
                 print(df_filtrato_buy)
