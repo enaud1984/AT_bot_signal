@@ -430,6 +430,8 @@ class AT_Bot:
                 print("Symbol:", symbol)
                 print("Oggi:", oggi)
                 print("Saldo:",saldo_symbol)
+                buy_signals['timestamp'] = pd.to_datetime(buy_signals['timestamp'])
+                sell_signals['timestamp'] = pd.to_datetime(sell_signals['timestamp'])
                 df_filtrato_buy = buy_signals[buy_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
                 df_filtrato_buy = df_filtrato_buy.sort_values(by='timestamp', ascending=False)
                 df_filtrato_sell = sell_signals[sell_signals['timestamp'] >= oggi][['timestamp', 'open', 'close', 'Signal']]
